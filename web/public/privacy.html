@@ -9,44 +9,97 @@
 <body>
 <main>
 <h1>M5 Whole Health: Privacy Policy</h1>
-<p class="meta">Effective October 17, 2026 · <a href="terms.html">Terms of use</a> · <a href="./">Open the app</a></p>
+<p class="meta">Effective October 19, 2026 · <a href="terms.html">Terms of use</a> · <a href="./">Open the app</a></p>
+
+<div class="note">
+<p><strong>About this app and the CARIN Code of Conduct.</strong> M5 Whole Health is a free, open-source <strong>demonstration</strong> app published by Mark Roberts as a personal project. Mark works for Leavitt Partners, an HMA company, and supports the <a href="https://www.carinalliance.com/">CARIN Alliance Code of Conduct for Consumer-Facing Applications</a>. Because M5 is a demonstration, not a consumer-facing app offered as a production service, it is not eligible to attest to the Code and has not been accredited under it. This policy is written to follow the Code's principles anyway, and is organized the same way. M5 is not a product of, or endorsed by, Leavitt Partners, HMA or the CARIN Alliance.</p>
+</div>
 
 <h2>The short version</h2>
+<table>
+  <tr><th>Does M5 collect my data on a server?</th><td>No. M5 has no server, no account and no analytics. The publisher never receives your health information.</td></tr>
+  <tr><th>Where is my data kept?</th><td>Only in your web browser, on your device, until you delete it.</td></tr>
+  <tr><th>Is my data sold, shared or used for advertising?</th><td>No. Never. M5 has no advertising, no marketing and no automated decision-making about you.</td></tr>
+  <tr><th>Is any data de-identified or used for research?</th><td>No. M5 creates no de-identified or pseudonymized data and does no research.</td></tr>
+  <tr><th>When does my data leave my device?</th><td>Only when you choose an action that needs it, listed below. Nothing is shared by default, and nothing is a condition of using M5.</td></tr>
+  <tr><th>Can I see, correct and delete it?</th><td>Yes. You can see everything M5 holds, add your own corrections, export it, and delete it at any time.</td></tr>
+</table>
+
+<h2>1. Transparency: what M5 keeps, and where</h2>
+<p>Everything M5 keeps is stored in your browser's local storage for this site, on your device: the records you import, any corrections or notes you add, PIQI results you load, and settings such as the client IDs you enter for health systems. It stays until you delete it. While you are away signing in to a health system, M5 briefly keeps a one-time security code (PKCE) in your browser's session storage and deletes it when you return. The sign-in access token is held only in memory and is discarded when the import finishes or you close the page. M5 does not keep any record of your data anywhere else.</p>
+<p>GitHub Pages hosts the app's code. Like any website host, GitHub may log your IP address and browser type when you load the page, under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>. GitHub never receives your health data.</p>
+
+<h2>2. Consent: when information leaves your device</h2>
+<p>None of these happen automatically. Each happens only when you start it, for the one destination you choose, and each is optional:</p>
+<table>
+  <tr><th>Connecting to a health system</th><td>You sign in on the health system's own page and approve read-only access. Your browser downloads your records directly from the health system. This is a one-time download each time you choose to import.</td></tr>
+  <tr><th>Retrieving a SMART Health Link</th><td>Your browser downloads the encrypted records from the link's host and decrypts them on your device.</td></tr>
+  <tr><th>Viewing images in the shlink-dicom viewer</th><td>The link opens in that viewer (shlink-dicom.exe.xyz), which decrypts the images in your browser.</td></tr>
+  <tr><th>Scoring with PIQI</th><td>You download a PIQI message and send it to the PIQI Gateway yourself. It contains the clinical data you are scoring. You can choose to leave out exact copies.</td></tr>
+  <tr><th>Checking medicines against plans</th><td>M5 sends the RxNorm codes of your medicines, not your name or other details, to the National Library of Medicine's RxNav to group brand and generic names, and, if you enter an API key, to the CMS Marketplace API to check coverage.</td></tr>
+  <tr><th>Example plans and sample patients</th><td>Downloaded from public GitHub repositories. Nothing about you is sent.</td></tr>
+  <tr><th>Sharing a SMART Health Link or PDF</th><td>Contains only what you select and goes only where you send it. A SMART Health Link can be opened by whoever has it until it expires; M5 cannot see when it is opened or recall a copy already sent.</td></tr>
+  <tr><th>Asking Claude for help with plans</th><td>M5 prepares a summary that you copy and paste into Claude yourself. M5 does not send it.</td></tr>
+</table>
+<p>Each outside service has its own privacy policy, which applies to what you send it.</p>
+
+<h2>3. Use and disclosure</h2>
 <ul>
-  <li>M5 has no server, no account and no analytics. The publisher never receives your health information.</li>
-  <li>Your records are stored only in your browser, on your device. You can delete them at any time.</li>
-  <li>M5 never sells, rents or shares your information, and never uses it for advertising.</li>
-  <li>Information leaves your browser only when you choose an action that needs it, as listed below.</li>
+  <li>M5 uses your data only to show, check and share it at your direction.</li>
+  <li>The publisher does not use or disclose your data, does not have it, and has no vendors or contractors that handle it.</li>
+  <li>M5 collects only what you choose to import, from the sources you choose.</li>
 </ul>
 
-<h2>What M5 stores, and where</h2>
-<p>Imported records, your notes and corrections, and your settings are kept in your browser's local storage for this site. They stay until you remove them with <strong>Clear</strong> in the app or by clearing this site's data in your browser. M5 also remembers the client IDs you enter for health systems. While you are away signing in to a health system, M5 briefly keeps a one-time security code (for PKCE) in your browser's session storage; it is deleted when you return. The sign-in access token is kept only in memory and is gone when the import finishes or you close the page.</p>
+<h2>4. Other people in your records</h2>
+<p>Health records can include information about other people, such as family medical history, and genetic results that say something about your relatives. Records you import for family members you have proxy access to are about them. Think about the people affected before you share these. M5 never uses anyone's information for marketing or any purpose beyond showing it to you.</p>
 
-<h2>When information leaves your browser</h2>
-<p>Each of these happens only when you start it:</p>
+<h2>5. Seeing, correcting and deleting your data</h2>
 <ul>
-  <li><strong>Connecting to a health system:</strong> you sign in on the health system's own page, and your browser downloads your records directly from it. M5 asks only for read access.</li>
-  <li><strong>Retrieving a SMART Health Link:</strong> your browser downloads the encrypted records from the link's host and decrypts them on your device.</li>
-  <li><strong>Viewing images in the shlink-dicom viewer:</strong> the link opens in that viewer (shlink-dicom.exe.xyz), which decrypts the images in your browser.</li>
-  <li><strong>Scoring with PIQI:</strong> you download a PIQI message from M5 and send it to the PIQI Gateway yourself. That message contains the clinical data you are scoring.</li>
-  <li><strong>Checking medicines against plans:</strong> M5 sends the RxNorm codes of your medicines (not your name or other details) to the National Library of Medicine's RxNav and, if you enter an API key, to the CMS Marketplace API.</li>
-  <li><strong>Plan and sample data:</strong> example plans and synthetic test patients are downloaded from public GitHub repositories. Nothing about you is sent.</li>
-  <li><strong>Sharing:</strong> a SMART Health Link or PDF you create contains what you selected, and goes wherever you send it.</li>
-  <li><strong>Asking Claude for help with plans:</strong> M5 prepares a summary that you can copy and paste into Claude yourself. M5 does not send it.</li>
+  <li><strong>See it all:</strong> the Clinical view shows every record exactly as it came in, with its source. You can export what you choose as a SMART Health Link or PDF.</li>
+  <li><strong>Correct it:</strong> M5 lets you add your own corrections and notes. They are kept separately from the original record and labeled as yours, and they are included in what you share afterwards. They are not sent back to the health system and do not change copies you already shared.</li>
+  <li><strong>Inaccurate or incomplete data:</strong> M5 shows records as your sources sent them and points out missing or questionable information. Each record shows where it came from, so you can tell whether a problem came from the source or from M5. To fix your official record, you have the right under HIPAA to ask your provider or health plan to amend it; see <a href="https://www.hhs.gov/hipaa/for-individuals/medical-records/index.html">HHS: Your medical records</a>. To report a problem with M5 itself, open an issue (see Contact).</li>
+  <li><strong>Delete it:</strong> use <strong>Remove</strong> or <strong>Clear</strong> on the patient bar in M5, or clear this site's data in your browser. Deletion is immediate and complete, because M5 keeps no other copy.</li>
+  <li><strong>Withdrawing consent:</strong> stop using a source or delete your data. Copies you already sent to others are under their control.</li>
 </ul>
-<p>Those services have their own privacy policies.</p>
 
-<h2>Children</h2>
-<p>M5 is meant for adults managing their own records and, with authorized proxy access, their family's. It is not directed to children, and the publisher does not knowingly collect information from anyone.</p>
+<h2>6. Security</h2>
+<ul>
+  <li>M5 is served only over HTTPS, so data is encrypted in transit.</li>
+  <li>Sign-in uses SMART on FHIR with your health system's own portal credentials and PKCE. M5 never sees your password.</li>
+  <li>SMART Health Links are decrypted on your device, and every part is checked so nothing altered is used.</li>
+  <li>M5 does not add its own encryption to data stored in your browser. It relies on your device's protections, such as a screen lock and disk encryption, which you should keep turned on. Anyone who can use your browser can see what you have imported.</li>
+  <li>If a security problem in M5 is found, it will be fixed and disclosed in the project's public repository, and the publisher will meet any applicable breach-notification laws.</li>
+</ul>
 
-<h2>HIPAA</h2>
-<p>M5 is a consumer app that you control. It is not run by a health care provider or health plan, and the publisher never receives your data, so HIPAA does not cover M5. The protections described here come from how M5 is built: your data stays on your device.</p>
+<h2>7. Where data came from (provenance)</h2>
+<p>M5 keeps the source of every record (the health system, link or file it came from, and when) and shows it next to the record. Your corrections are kept and shown separately, so the original is never changed.</p>
 
-<h2>Security</h2>
-<p>M5 is served only over HTTPS, uses standard SMART on FHIR sign-in with PKCE, and decrypts SMART Health Links on your device, checking that nothing was altered. Because your records live in your browser, the security of your device and browser matters most.</p>
+<h2>8. Children</h2>
+<p>M5 is meant for adults managing their own records and, with authorized proxy access, their family's, including children. It is not directed to children under 13, and the publisher does not collect information from anyone, so it complies with the Children's Online Privacy Protection Act.</p>
 
-<h2>Changes and contact</h2>
-<p>If this policy changes, the date above will change and every version stays in the project's public history at <a href="https://github.com/crookhaven/M5-WholeHealth">github.com/crookhaven/M5-WholeHealth</a>. Questions: open an issue at <a href="https://github.com/crookhaven/M5-WholeHealth/issues">github.com/crookhaven/M5-WholeHealth/issues</a>.</p>
+<h2>9. No accounts, so no dormant accounts</h2>
+<p>M5 has no accounts. Data you leave in your browser stays there until you delete it.</p>
+
+<h2>10. If the project changes hands or ends</h2>
+<p>The publisher holds none of your data, so there is nothing to transfer. If the project ends or passes to someone else, your data stays in your browser, where you can export or delete it. The code remains open source.</p>
+
+<h2>11. Changes to this policy</h2>
+<p>The date at the top shows when this policy last changed, and every version stays in the project's public history. When the policy or M5's data practices change, M5 shows a notice the next time you open it, and asks you to review the change before you continue. You can stop using M5 and delete your data instead.</p>
+
+<h2>12. HIPAA</h2>
+<p>M5 is a consumer app you control. It is not run by a health care provider or health plan, and the publisher never receives your data, so HIPAA does not cover M5. Your health systems remain covered by HIPAA. Requesting your records through M5 uses your HIPAA right of access.</p>
+
+<h2>13. Your choices, and learning more</h2>
+<p>Sharing health information can help you and your care team, but once shared it can be hard to take back. Share only what is needed, with people and apps you trust. To learn more:</p>
+<ul>
+  <li><a href="https://www.hhs.gov/hipaa/for-individuals/right-to-access/index.html">HHS: Your right to access your health information</a></li>
+  <li><a href="https://www.healthit.gov/how-to-get-your-health-record/">HealthIT.gov: How to get, check and use your health record</a></li>
+  <li><a href="https://www.carinalliance.com/">CARIN Alliance: consumer-directed exchange and the Code of Conduct</a></li>
+</ul>
+
+<h2>14. Accountability and contact</h2>
+<p>Mark Roberts, the publisher, is responsible for M5 following this policy. Questions, complaints or problems: open an issue at <a href="https://github.com/crookhaven/M5-WholeHealth/issues">github.com/crookhaven/M5-WholeHealth/issues</a>. You can also contact the Federal Trade Commission or your state attorney general about any privacy practice.</p>
+<p>This policy was written using the ONC Model Privacy Notice and the CARIN Code of Conduct as guides.</p>
 </main>
 </body>
 </html>
