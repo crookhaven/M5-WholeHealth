@@ -1140,3 +1140,21 @@ table {
   font-weight: 600;
   color: var(--accent, #0b6e69);
 }
+
+.policy-notice {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--accent-border, rgba(13, 148, 136, 0.4));
+  border-radius: 8px;
+  background: var(--accent-bg, rgba(13, 148, 136, 0.08));
+}
+
+.policy-notice p {
+  margin: 0;
+  flex: 1 1 32rem;
+}

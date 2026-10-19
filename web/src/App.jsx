@@ -9,6 +9,7 @@ import IpsView from './components/IpsView'
 import PiqiResults from './components/PiqiResults'
 import WhatToDo from './components/WhatToDo'
 import PatientBar from './components/PatientBar'
+import PolicyNotice from './components/PolicyNotice'
 import FamilyOverview from './components/FamilyOverview'
 import ComparePlans from './components/ComparePlans'
 import SharePanel from './components/SharePanel'
@@ -134,6 +135,7 @@ function AppContent() {
         </div>
         <p>Your patient-controlled health data workspace</p>
       </header>
+      <PolicyNotice />
       <PatientBar />
       <nav className="app-tabs" role="tablist" aria-label="Sections">
         {TABS.map((t) => (
