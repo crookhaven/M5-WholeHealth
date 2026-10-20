@@ -3,7 +3,7 @@ import { useState } from 'react'
 // The date of the current terms and privacy policy. Change it whenever either
 // page changes in a way people should know about, and everyone sees the notice
 // again the next time they open M5.
-export const POLICY_VERSION = '2026-10-19'
+export const POLICY_VERSION = '2026-10-20'
 const KEY = 'm5-policy-seen'
 
 function seenVersion() {
@@ -36,8 +36,10 @@ export default function PolicyNotice() {
         {updated ? <strong>The terms and privacy policy changed on {POLICY_VERSION}. </strong> : <strong>Before you start: </strong>}
         M5 is a free, open-source demonstration. Your records stay in this browser, and nothing is shared unless you
         choose to share it. Please read the <a href="terms.html">terms</a> and{' '}
-        <a href="privacy.html">privacy policy</a>. If you don&apos;t agree, don&apos;t import anything, and use Clear to
-        remove what you have.
+        <a href="privacy.html">privacy policy</a>. M5 is not a substitute for a doctor&apos;s judgment. It hasn&apos;t
+        been reviewed or endorsed by any health system or its technology vendors (such as healow, eClinicalWorks or
+        Epic); they aren&apos;t parties to these terms, give no warranties about M5, and you agree not to hold them
+        responsible for it. If you don&apos;t agree, don&apos;t import anything, and use Clear to remove what you have.
       </p>
       <button type="button" onClick={accept}>
         {updated ? 'I have read the changes' : 'I agree'}

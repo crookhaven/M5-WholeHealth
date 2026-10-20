@@ -3,6 +3,7 @@ import { useWorkspace } from '../state/WorkspaceContext'
 import { createSourceRecord, validateCoveragePlan } from '../lib/sourceRecord'
 import { normalizeFhirBundle } from '../lib/fhir/normalize'
 import SmartConnect from './SmartConnect'
+import { PasscodeSection } from './Passcode'
 import { CATALOG_URL, OSP_REPO, bundleToRecords, catalogPatients, fetchFromGitHub } from '../lib/openSyntheticPatients'
 import { parseShlUri, requiresPasscode } from '../lib/shl/parse'
 import { isPackageOnlyLink } from '../lib/shl/packageFile'
@@ -594,6 +595,7 @@ export default function ImportPanel() {
         PDF, or pasting a summary into Claude. See the <a href="terms.html">terms</a> and{' '}
         <a href="privacy.html">privacy policy</a>.
       </p>
+      <PasscodeSection />
       <SmartConnect />
       <SampleImport />
       <OpenSyntheticPatientsImport />

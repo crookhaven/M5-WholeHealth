@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { downloadBlob } from '../lib/download'
+import { useActivityLogger } from '../state/WorkspaceContext'
 
 const MAX_DOWNLOAD_BYTES = 1.5 * 1024 ** 3 // a browser holds the whole study in memory
 const MAX_ZIP_ENTRIES = 65535
@@ -15,6 +16,7 @@ function size(bytes) {
 export default function ImagingFiles({ record }) {
   const dicom = record.data?.dicom
   const [busy, setBusy] = useState(null)
+  const logActivity = useActivityLogger()
   const [error, setError] = useState(null)
   if (record.data?.dicomError) {
     return <p className="record-source">Images were included, but their index could not be read: {record.data.dicomError}</p>
@@ -32,6 +34,7 @@ export default function ImagingFiles({ record }) {
       const files = await studyInstances(dicom, dicom.baseUrl, { onProgress: (p) => setBusy(p) })
       const name = (record.data.title ?? 'imaging-study').replace(/[^\w.-]+/g, '-').slice(0, 60)
       downloadBlob(zipStore(files), `${name}-dicom.zip`)
+      logActivity({ action: 'Exported', detail: `Imaging files: ${record.data.title ?? 'imaging study'}`, purpose: 'Downloaded by you' })
     } catch (err) {
       setError(err.message)
     } finally {
