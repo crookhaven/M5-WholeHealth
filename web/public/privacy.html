@@ -9,7 +9,7 @@
 <body>
 <main>
 <h1>M5 Whole Health: Privacy Policy</h1>
-<p class="meta">Effective October 19, 2026 · <a href="terms.html">Terms of use</a> · <a href="./">Open the app</a></p>
+<p class="meta">Effective October 20, 2026 · <a href="terms.html">Terms of use</a> · <a href="./">Open the app</a></p>
 
 <div class="note">
 <p><strong>About this app and the CARIN Code of Conduct.</strong> M5 Whole Health is a free, open-source <strong>demonstration</strong> app published by Mark Roberts as a personal project. Mark works for Leavitt Partners, an HMA company, and supports the <a href="https://www.carinalliance.com/">CARIN Alliance Code of Conduct for Consumer-Facing Applications</a>. Because M5 is a demonstration, not a consumer-facing app offered as a production service, it is not eligible to attest to the Code and has not been accredited under it. This policy is written to follow the Code's principles anyway, and is organized the same way. M5 is not a product of, or endorsed by, Leavitt Partners, HMA or the CARIN Alliance.</p>
@@ -26,8 +26,10 @@
 </table>
 
 <h2>1. Transparency: what M5 keeps, and where</h2>
-<p>Everything M5 keeps is stored in your browser's local storage for this site, on your device: the records you import, any corrections or notes you add, PIQI results you load, and settings such as the client IDs you enter for health systems. It stays until you delete it. While you are away signing in to a health system, M5 briefly keeps a one-time security code (PKCE) in your browser's session storage and deletes it when you return. The sign-in access token is held only in memory and is discarded when the import finishes or you close the page. M5 does not keep any record of your data anywhere else.</p>
+<p>Everything M5 keeps is stored in your browser's local storage for this site, on your device: the records you import, any corrections or notes you add, PIQI results you load, an activity log, and settings such as the client IDs you enter for health systems. When you set a passcode, the records, corrections, results and activity log are encrypted with it before they are saved (client IDs and the date you accepted these terms are not health information and are not encrypted). It stays until you delete it. While you are away signing in to a health system, M5 briefly keeps a one-time security code (PKCE) in your browser's session storage and deletes it when you return. The sign-in access token is held only in memory and is discarded when the import finishes or you close the page. M5 does not keep any record of your data anywhere else.</p>
 <p>GitHub Pages hosts the app's code. Like any website host, GitHub may log your IP address and browser type when you load the page, under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>. GitHub never receives your health data.</p>
+
+<p><strong>Activity log.</strong> M5 records each import, correction, export, share and deletion, with the date and time, the patient, what was involved and the purpose. You can see it, and download it, under Share &amp; Export. It is stored with your records, encrypted with them, and never leaves your browser unless you download it. Clearing a patient removes that patient's records; the log keeps the entry saying they were deleted.</p>
 
 <h2>2. Consent: when information leaves your device</h2>
 <p>None of these happen automatically. Each happens only when you start it, for the one destination you choose, and each is optional:</p>
@@ -67,7 +69,8 @@
   <li>M5 is served only over HTTPS, so data is encrypted in transit.</li>
   <li>Sign-in uses SMART on FHIR with your health system's own portal credentials and PKCE. M5 never sees your password.</li>
   <li>SMART Health Links are decrypted on your device, and every part is checked so nothing altered is used.</li>
-  <li>M5 does not add its own encryption to data stored in your browser. It relies on your device's protections, such as a screen lock and disk encryption, which you should keep turned on. Anyone who can use your browser can see what you have imported.</li>
+  <li>When you set a passcode, M5 encrypts what it saves in your browser with AES-256-GCM, using a key derived from your passcode (PBKDF2-SHA-256, 600,000 rounds, with a random salt). The passcode and key are never saved; you enter the passcode each time you open M5, and you can lock M5 at any time. A passcode is required before connecting to a health system. Nobody, including the publisher, can recover a forgotten passcode; you would delete the records and import them again.</li>
+  <li>Without a passcode, records saved from other sources (files, sample patients, SMART Health Links) are not encrypted by M5, and anyone who can use your browser can see them. Keep your device's own protections, such as a screen lock and disk encryption, turned on either way. While M5 is open and unlocked, the records are in the page's memory.</li>
   <li>If a security problem in M5 is found, it will be fixed and disclosed in the project's public repository, and the publisher will meet any applicable breach-notification laws.</li>
 </ul>
 

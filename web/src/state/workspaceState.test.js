@@ -136,4 +136,25 @@ describe('workspaceState', () => {
     expect(loadState('not json').patients).toHaveLength(1)
     expect(loadState(null).patients).toHaveLength(1)
   })
+
+  it('logs imports, changes, exports and deletions with when and why', () => {
+    let s = createInitialState()
+    const first = s.activeId
+    s = reducer(s, { type: 'ADD_RECORDS', records: [{ ...med('a'), source: { type: 'fhir-bundle-upload', documentName: 'mine.json' } }] })
+    s = reducer(s, { type: 'LOG_ACTIVITY', entry: { action: 'Exported', detail: 'PDF summary', purpose: 'Downloaded by you' } })
+    s = reducer(s, { type: 'RENAME_PATIENT', id: first, name: 'Sam' })
+    s = reducer(s, { type: 'ADD_PATIENT', name: 'Alex' })
+    s = reducer(s, { type: 'REMOVE_PATIENT', id: first })
+    expect(s.activity.map((e) => e.action)).toEqual(['Imported', 'Exported', 'Deleted'])
+    expect(s.activity[0]).toMatchObject({ patient: 'Patient 1', detail: '1 records from FHIR file: mine.json', purpose: 'Added to the record' })
+    expect(s.activity[2]).toMatchObject({ patient: 'Sam', purpose: 'Deleted by you' })
+    expect(s.activity[0].at).toMatch(/^\d{4}-\d\d-\d\dT/)
+    // The log is saved and read back with the rest of the workspace.
+    expect(loadState(JSON.stringify(s)).activity).toEqual(s.activity)
+  })
+
+  it('does not log what did not change', () => {
+    const s = createInitialState()
+    expect(reducer(s, { type: 'SELECT_PATIENT', id: 'missing' }).activity).toEqual([])
+  })
 })

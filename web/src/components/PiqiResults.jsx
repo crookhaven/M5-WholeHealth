@@ -7,7 +7,7 @@ import { DATASETS, buildDatasetMessage, datasetHasData } from '../lib/datasets'
 import { downloadText } from '../lib/download'
 
 function ResultLoader({ dataset }) {
-  const { sourceRecords, assertions, claimsData, setGatewayResult } = useWorkspace()
+  const { sourceRecords, assertions, claimsData, setGatewayResult, logActivity } = useWorkspace()
   const info = DATASETS[dataset]
   const hasData = datasetHasData(dataset, { sourceRecords, claimsData })
 
@@ -17,6 +17,7 @@ function ResultLoader({ dataset }) {
     const message = buildDatasetMessage(dataset, { sourceRecords, assertions, claimsData, uniqueOnly })
     const name = uniqueOnly ? info.fileName.replace(/\.json$/, '-distinct.json') : info.fileName
     downloadText(JSON.stringify(message, null, 2), name)
+    logActivity({ action: 'Exported', detail: `${info.label} PIQI message${uniqueOnly ? ' (distinct records)' : ''}`, purpose: 'Downloaded to score data quality' })
   }
 
   const [text, setText] = useState('')
@@ -34,6 +35,7 @@ function ResultLoader({ dataset }) {
       }
       const linked = linkChecksToRecords(parsed, sourceRecords, assertions)
       setGatewayResult(dataset, { ...linked, loadedAt: new Date().toISOString() })
+      logActivity({ action: 'Imported', detail: `${info.label} PIQI score result`, purpose: 'Data quality review' })
       setText('')
       setError(null)
     } catch (err) {

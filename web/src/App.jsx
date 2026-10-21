@@ -10,6 +10,7 @@ import PiqiResults from './components/PiqiResults'
 import WhatToDo from './components/WhatToDo'
 import PatientBar from './components/PatientBar'
 import PolicyNotice from './components/PolicyNotice'
+import { LockScreen } from './components/Passcode'
 import FamilyOverview from './components/FamilyOverview'
 import ComparePlans from './components/ComparePlans'
 import SharePanel from './components/SharePanel'
@@ -123,8 +124,25 @@ function DataArea({ sourceRecords, assertions }) {
 }
 
 function AppContent() {
-  const { sourceRecords, assertions, activePatient } = useWorkspace()
+  const { sourceRecords, assertions, activePatient, security } = useWorkspace()
   const [tab, setTab] = useState('import')
+
+  if (security.locked) {
+    return (
+      <div className="app-shell">
+        <header className="app-header">
+          <div className="app-header-title">
+            <img src={logo} alt="" width="32" height="32" />
+            <h1>M5 Whole Health</h1>
+          </div>
+          <p>Your patient-controlled health data workspace</p>
+        </header>
+        <main className="app-main">
+          <LockScreen />
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="app-shell">

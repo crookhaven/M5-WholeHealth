@@ -30,7 +30,7 @@ function patientName(bundle) {
 // "Connect to a provider": sign in to a health system (Epic MyChart first)
 // and import the record straight from its FHIR API.
 export default function SmartConnect() {
-  const { addRecords, addClaims, addPatient, renamePatient, activeId, sourceRecords, claimsData } = useWorkspace()
+  const { addRecords, addClaims, addPatient, renamePatient, activeId, sourceRecords, claimsData, security, logActivity } = useWorkspace()
   const [iss, setIss] = useState(PRESETS[0].iss)
   const [clientIds, setClientIds] = useState(storedClientIds)
   const [busy, setBusy] = useState(null)
@@ -80,6 +80,7 @@ export default function SmartConnect() {
         const empty = sourceRecords.length === 0 && !claimsData
         if (empty) renamePatient(activeId, name)
         else addPatient(name)
+        logActivity({ action: 'Connected', detail: `Signed in to ${session.label} and read the record`, purpose: 'Import your record from your provider' })
         addRecords(records)
         if (claims) addClaims(claims)
         setSkipped(notRead)
@@ -122,7 +123,13 @@ export default function SmartConnect() {
         <input type="text" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="From your app registration" />
       </label>
       {preset?.note && <p className="section-help">{preset.note}</p>}
-      <button type="button" onClick={signIn} disabled={busy !== null || !iss || !clientId}>
+      {!security.encrypted && (
+        <p className="passcode-required">
+          <strong>Set a passcode first</strong>, under Protect your records above. Records from a health system are
+          kept in this browser encrypted with it.
+        </p>
+      )}
+      <button type="button" onClick={signIn} disabled={busy !== null || !iss || !clientId || !security.encrypted}>
         {busy ?? 'Sign in and import'}
       </button>
       <p className="section-help">

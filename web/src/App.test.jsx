@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 
@@ -90,4 +90,26 @@ describe('App', () => {
     await user.click(screen.getByRole('tab', { name: 'Family' }))
     expect(screen.getByRole('heading', { name: 'Sam' })).toBeInTheDocument()
   })
+
+  it('encrypts the saved records with a passcode and asks for it on the next visit', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await user.type(screen.getByLabelText('Passcode'), 'correct horse')
+    await user.type(screen.getByLabelText('Type it again'), 'correct horse')
+    await user.click(screen.getByRole('button', { name: 'Set passcode' }))
+    await screen.findByRole('button', { name: 'Lock now' })
+    await waitFor(() => expect(localStorage.getItem('m5-whole-health-workspace-v1')).toContain('m5vault'), { timeout: 10000 })
+    expect(localStorage.getItem('m5-whole-health-workspace-v1')).not.toContain('Patient 1')
+    unmount()
+
+    render(<App />)
+    expect(screen.queryByRole('tab', { name: 'Import' })).toBeNull()
+    await user.type(screen.getByLabelText('Passcode'), 'wrong passcode')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    expect(await screen.findByText('That passcode is not right.', {}, { timeout: 10000 })).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Passcode'))
+    await user.type(screen.getByLabelText('Passcode'), 'correct horse')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    expect(await screen.findByRole('tab', { name: 'Import' }, { timeout: 10000 })).toBeInTheDocument()
+  }, 30000)
 })

@@ -32,7 +32,27 @@ function newId() {
 
 export function createInitialState() {
   const id = newId()
-  return { version: STATE_VERSION, patients: [{ id, name: 'Patient 1' }], activeId: id, data: { [id]: emptySlice() } }
+  return { version: STATE_VERSION, patients: [{ id, name: 'Patient 1' }], activeId: id, data: { [id]: emptySlice() }, activity: [] }
+}
+
+// The activity log: who did what with the data, when and why, kept in the
+// browser with the records (and encrypted with them when a passcode is set).
+const MAX_ACTIVITY = 2000
+
+export function activityEntry(state, { action, detail, purpose, patientId }) {
+  const patient = state.patients.find((p) => p.id === (patientId ?? state.activeId))
+  return { at: new Date().toISOString(), action, patient: patient?.name ?? null, detail: detail ?? null, purpose: purpose ?? null }
+}
+
+function withActivity(state, entry) {
+  return { ...state, activity: [...(state.activity ?? []), entry].slice(-MAX_ACTIVITY) }
+}
+
+function sourceSummary(records) {
+  const source = records[0]?.source
+  if (!source) return null
+  const label = { 'smart-on-fhir': 'health system (FHIR)', 'smart-health-link': 'SMART Health Link', 'fhir-bundle-upload': 'FHIR file', 'open-synthetic-patients': 'open-synthetic-patients' }[source.type] ?? source.type
+  return `${records.length} records from ${label}${source.documentName ? `: ${source.documentName}` : ''}`
 }
 
 const DEFAULT_NAME = /^Patient \d+$/
@@ -61,7 +81,7 @@ export function migrateLegacy(parsed) {
   }
   const id = newId()
   const name = nameFromRecords(slice.sourceRecords) ?? 'Patient 1'
-  return { version: STATE_VERSION, patients: [{ id, name }], activeId: id, data: { [id]: slice } }
+  return { version: STATE_VERSION, patients: [{ id, name }], activeId: id, data: { [id]: slice }, activity: [] }
 }
 
 export function loadState(raw) {
@@ -72,7 +92,7 @@ export function loadState(raw) {
       const activeId = parsed.patients.some((p) => p.id === parsed.activeId) ? parsed.activeId : parsed.patients[0].id
       const data = {}
       for (const p of parsed.patients) data[p.id] = { ...emptySlice(), ...(parsed.data?.[p.id] ?? {}) }
-      return { version: STATE_VERSION, patients: parsed.patients, activeId, data }
+      return { version: STATE_VERSION, patients: parsed.patients, activeId, data, activity: Array.isArray(parsed.activity) ? parsed.activity : [] }
     }
     return migrateLegacy(parsed ?? {})
   } catch {
@@ -94,8 +114,32 @@ function nextDefaultName(patients) {
   return `Patient ${n}`
 }
 
+// Changes to the records are logged as they happen.
 export function reducer(state, action) {
+  const next = baseReducer(state, action)
+  if (next === state) return next
   switch (action.type) {
+    case 'ADD_RECORDS':
+      return withActivity(next, activityEntry(next, { action: 'Imported', detail: sourceSummary(action.records), purpose: 'Added to the record' }))
+    case 'ADD_CLAIMS':
+      return withActivity(next, activityEntry(next, { action: 'Imported', detail: `${action.claimsData?.claims?.length ?? 0} insurance claims`, purpose: 'Added to the record' }))
+    case 'ADD_ASSERTION':
+      return withActivity(next, activityEntry(next, { action: 'Changed', detail: `Your correction to ${action.assertion?.field ?? 'a record'}`, purpose: 'Correction by you' }))
+    case 'REMOVE_PATIENT':
+      return withActivity(next, activityEntry(state, { action: 'Deleted', detail: 'All records for this patient', purpose: 'Deleted by you', patientId: action.id }))
+    case 'LOG_ACTIVITY':
+      return next
+    default:
+      return next
+  }
+}
+
+function baseReducer(state, action) {
+  switch (action.type) {
+    case 'LOG_ACTIVITY':
+      return withActivity(state, activityEntry(state, action.entry))
+    case 'LOAD':
+      return action.state
     case 'ADD_RECORDS': {
       const next = updateActive(state, (s) => ({ ...s, sourceRecords: [...s.sourceRecords, ...action.records] }))
       // An unnamed patient takes the name found in imported demographics.

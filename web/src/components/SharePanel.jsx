@@ -9,9 +9,10 @@ import {
 import { buildPiqiMessage } from '../lib/piqi/message'
 import { downloadBlob, downloadText } from '../lib/download'
 import { packageFileContent } from '../lib/shl/packageFile'
+import ActivityLog from './ActivityLog'
 
 export default function SharePanel({ sourceRecords }) {
-  const { assertions, sharingSelection, setSharing } = useWorkspace()
+  const { assertions, sharingSelection, setSharing, logActivity } = useWorkspace()
   const [shlResult, setShlResult] = useState(null)
   const [shlError, setShlError] = useState(null)
   const [building, setBuilding] = useState(false)
@@ -21,10 +22,12 @@ export default function SharePanel({ sourceRecords }) {
   )
   const domains = selectedDomains(sourceRecords, sharingSelection)
   const piqiDomains = domains.filter((d) => d !== 'coverage' && !isDisplayOnly(d))
+  const sectionNames = (list) => list.map((d) => DOMAINS[d]?.label ?? d).join(', ')
 
   function handleExportPiqiMessage() {
     const message = buildPiqiMessage(sourceRecords, assertions, { domains: piqiDomains })
     downloadText(JSON.stringify(message, null, 2), 'm5-whole-health-piqi-message.json')
+    logActivity({ action: 'Exported', detail: `PIQI message: ${sectionNames(piqiDomains)}`, purpose: 'Downloaded to score data quality' })
   }
 
   async function handleExportPdf() {
@@ -32,6 +35,7 @@ export default function SharePanel({ sourceRecords }) {
     const sections = buildPdfSections(domains, sourceRecords, assertions)
     const blob = buildPdfSummary({ sections })
     downloadBlob(blob, 'm5-whole-health-summary.pdf')
+    logActivity({ action: 'Exported', detail: `PDF summary: ${sectionNames(domains)}`, purpose: 'Downloaded by you' })
   }
 
   async function handleExportShl() {
@@ -45,6 +49,7 @@ export default function SharePanel({ sourceRecords }) {
       const pkg = await buildShlPackage(bundle, { label: 'M5 Whole Health export' })
       const qr = await generateQrDataUrl(pkg.shlUri)
       setShlResult({ ...pkg, qr, bundle })
+      logActivity({ action: 'Shared', detail: `SMART Health Link created: ${sectionNames(domains)}`, purpose: 'Sharing with someone you choose' })
     } catch (err) {
       setShlError(err.message)
     } finally {
@@ -55,12 +60,16 @@ export default function SharePanel({ sourceRecords }) {
   function handleDownloadPackage() {
     if (!shlResult) return
     downloadText(JSON.stringify(packageFileContent(shlResult), null, 2), 'm5-whole-health-shl-package.json')
+    logActivity({ action: 'Exported', detail: 'SMART Health Link package (encrypted)', purpose: 'Sharing with someone you choose' })
   }
 
   if (domainsWithData.length === 0) {
     return (
-      <div className="empty-state">
-        Nothing to share yet. Import some health information first.
+      <div className="share-panel">
+        <div className="empty-state">
+          Nothing to share yet. Import some health information first.
+        </div>
+        <ActivityLog />
       </div>
     )
   }
@@ -131,6 +140,7 @@ export default function SharePanel({ sourceRecords }) {
           </div>
         )}
       </section>
+      <ActivityLog />
     </div>
   )
 }
