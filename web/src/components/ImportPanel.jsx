@@ -69,7 +69,7 @@ function SampleImport() {
         data,
       }),
     )
-    addRecords(records)
+    addRecords(records, [samplePatient])
     setMessage(`Loaded ${records.length} records from the sample health record.`)
   }
 
@@ -185,7 +185,7 @@ function OpenSyntheticPatientsImport() {
       const empty = sourceRecords.length === 0 && !claimsData
       if (empty) renamePatient(activeId, patient.name)
       else addPatient(patient.name)
-      addRecords(records)
+      addRecords(records, [bundle])
       if (claims) addClaims(claims)
       setStatus(
         `Loaded ${patient.name}${empty ? '' : ' as a new patient'}: ${records.length} records` +
@@ -248,7 +248,7 @@ function FhirBundleImport() {
           sourceType: 'fhir-bundle-upload',
           documentName: file.name,
         })
-        addRecords(records)
+        addRecords(records, [bundle])
         if (claimsData) addClaims(claimsData)
         setStatus(
           `Imported ${records.length} records from ${file.name}.` +
@@ -455,7 +455,7 @@ function ShlImport() {
           raw: { shlUri: url, manifest },
         }),
       )
-      addRecords(records)
+      addRecords(records, bundles)
       const studies = normalized.filter((n) => n.data?.dicom)
       setStatus(
         `Retrieved and imported ${records.length} records.` +

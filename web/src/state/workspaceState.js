@@ -23,7 +23,25 @@ export function emptySlice() {
     gatewayResults: {},
     // Insurance claims (PIQI PAT_EOB_V1 shape), kept apart from clinical records.
     claimsData: null,
+    // The FHIR resources exactly as imported, keyed by fullUrl, so they can be
+    // shared as they came (SMART Health Check-in matches them by profile).
+    fhirResources: {},
   }
+}
+
+// Adds the entries of imported FHIR Bundles, keyed by fullUrl (or type/id).
+export function mergeFhirResources(existing, bundles) {
+  const out = { ...(existing ?? {}) }
+  for (const bundle of bundles ?? []) {
+    for (const entry of bundle?.entry ?? []) {
+      const resource = entry?.resource
+      if (!resource?.resourceType || resource.resourceType === 'OperationOutcome') continue
+      const fullUrl = entry.fullUrl || (resource.id ? `${resource.resourceType}/${resource.id}` : null)
+      if (!fullUrl) continue
+      out[fullUrl] = resource
+    }
+  }
+  return out
 }
 
 function newId() {
@@ -141,7 +159,11 @@ function baseReducer(state, action) {
     case 'LOAD':
       return action.state
     case 'ADD_RECORDS': {
-      const next = updateActive(state, (s) => ({ ...s, sourceRecords: [...s.sourceRecords, ...action.records] }))
+      const next = updateActive(state, (s) => ({
+        ...s,
+        sourceRecords: [...s.sourceRecords, ...action.records],
+        ...(action.fhir?.length ? { fhirResources: mergeFhirResources(s.fhirResources, action.fhir) } : {}),
+      }))
       // An unnamed patient takes the name found in imported demographics.
       const active = state.patients.find((p) => p.id === state.activeId)
       const found = active && DEFAULT_NAME.test(active.name) ? nameFromRecords(action.records) : undefined
