@@ -81,6 +81,13 @@ export async function pkceChallenge(verifier) {
   return bytesToBase64Url(new Uint8Array(digest))
 }
 
+// healow (eClinicalWorks) also wants the practice code on the sign-in link;
+// it's the last part of the FHIR address, as in fhir4.healow.com/fhir/r4/JAFJCD.
+export function healowPracticeCode(base) {
+  const m = /^https:\/\/fhir4\.healow\.com\/fhir\/r4\/([A-Za-z0-9]+)$/i.exec(base)
+  return m ? { practice_code: m[1] } : {}
+}
+
 // Builds the sign-in URL and remembers what the callback needs.
 export async function beginSignIn({ iss, clientId, label, storage = sessionStorage, location = window.location, fetchImpl }) {
   const base = normalizeBase(iss)
@@ -103,6 +110,7 @@ export async function beginSignIn({ iss, clientId, label, storage = sessionStora
     aud: base,
     code_challenge: await pkceChallenge(verifier),
     code_challenge_method: 'S256',
+    ...healowPracticeCode(base),
   }).toString()
   return url.toString()
 }

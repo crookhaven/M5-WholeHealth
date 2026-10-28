@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { beginSignIn, completeSignIn, pkceChallenge, readRecord, recordQueries } from './client'
+import { beginSignIn, healowPracticeCode, completeSignIn, pkceChallenge, readRecord, recordQueries } from './client'
 
 const ISS = 'https://fhir.example.org/api/FHIR/R4'
 const store = () => {
@@ -73,5 +73,10 @@ describe('reading the record', () => {
     const types = bundle.entry.map((e) => `${e.resource.resourceType}/${e.resource.id}`)
     expect(types).toEqual(['Patient/p1', 'MedicationRequest/m1', 'MedicationRequest/m2', 'Medication/x'])
     expect(skipped).toEqual(['Device: not available (403)'])
+  })
+
+  it('adds the practice code for healow FHIR addresses only', () => {
+    expect(healowPracticeCode('https://fhir4.healow.com/fhir/r4/JAFJCD')).toEqual({ practice_code: 'JAFJCD' })
+    expect(healowPracticeCode('https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4')).toEqual({})
   })
 })
