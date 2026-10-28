@@ -3,6 +3,7 @@ import { useWorkspace } from '../state/WorkspaceContext'
 import { walletSession } from '../lib/checkin/session'
 import { buildResponse, declineAll, describeResource, patientEntry, prepareItems, walletEntries } from '../lib/checkin/respond'
 import { isEnabled, missingRequired } from '../lib/checkin/forms'
+import { CHECKIN_TEST_PATIENT, bundleToRecords, fetchFromGitHub } from '../lib/openSyntheticPatients'
 
 // M5 as a SMART Health Check-in web wallet: a check-in page opens M5 with
 // ?checkin and asks for records and forms; the patient picks what to share,
@@ -149,14 +150,38 @@ function ItemCard({ p, shared, onShare, answers, onAnswer }) {
 
 export default function CheckinWallet() {
   const session = useSyncExternalStore(walletSession.subscribe, walletSession.get)
-  const { patients, activeId, allData, logActivity } = useWorkspace()
+  const { patients, activeId, allData, logActivity, addPatient, renamePatient, addRecords, addClaims, sourceRecords } = useWorkspace()
   const [patientId, setPatientId] = useState(activeId)
   const [prepared, setPrepared] = useState(null)
   const [choices, setChoices] = useState({})
   const [answers, setAnswers] = useState({})
   const [problem, setProblem] = useState(null)
+  const [loading, setLoading] = useState(false)
   const context = session.status === 'request' ? session.context : null
   const resources = allData[patientId]?.fhirResources
+
+  // Testers come with an empty M5: offer a synthetic patient to share from.
+  async function loadTestPatient() {
+    setLoading(true)
+    setProblem(null)
+    try {
+      const bundle = await fetchFromGitHub(CHECKIN_TEST_PATIENT.url)
+      const { records, claimsData } = bundleToRecords(bundle, { sourceType: 'open-synthetic-patients', documentName: 'maximus-decimus-meridius/bundle.json' })
+      if (sourceRecords.length === 0) renamePatient(activeId, CHECKIN_TEST_PATIENT.name)
+      else addPatient(CHECKIN_TEST_PATIENT.name)
+      addRecords(records, [bundle])
+      if (claimsData) addClaims(claimsData)
+    } catch (err) {
+      setProblem(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // A newly loaded patient becomes the one whose records are offered.
+  useEffect(() => {
+    setPatientId(activeId)
+  }, [activeId])
 
   useEffect(() => {
     if (!context) return
@@ -260,10 +285,16 @@ export default function CheckinWallet() {
       )}
 
       {entries.length === 0 && (
-        <p className="import-error">
-          M5 has no FHIR records saved for {patient?.name}. M5 keeps records as FHIR from this version on: import them again
-          (from a health system, a FHIR file or open-synthetic-patients) to share them here.
-        </p>
+        <div className="import-section">
+          <p>
+            M5 has no FHIR records saved for {patient?.name}. M5 keeps records as FHIR from this version on, so import them
+            again (from a health system, a FHIR file or open-synthetic-patients) to share them here.
+          </p>
+          <p>Testing? Load a synthetic test patient with US Core records and an insurance card.</p>
+          <button type="button" onClick={loadTestPatient} disabled={loading}>
+            {loading ? 'Loading…' : `Load the synthetic test patient (${CHECKIN_TEST_PATIENT.name})`}
+          </button>
+        </div>
       )}
 
       {!prepared ? (

@@ -7,6 +7,9 @@ import { createSourceRecord } from './sourceRecord'
 export const OSP_REPO = 'https://github.com/crookhaven/open-synthetic-patients'
 const RAW = 'https://raw.githubusercontent.com/crookhaven/open-synthetic-patients/main'
 export const CATALOG_URL = `${RAW}/catalog.json`
+// The test patient offered to check-in testers: every US Core item a check-in
+// page asks for in the connectathon's minimum scenarios.
+export const CHECKIN_TEST_PATIENT = { name: 'Maximus Decimus Meridius', url: `${RAW}/patients/maximus-decimus-meridius/bundle.json` }
 export const MARKETPLACE_PLANS_URL = `${RAW}/marketplace/marketplace_plans_48201.json`
 
 export function catalogPatients(catalog) {
