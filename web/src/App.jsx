@@ -11,6 +11,8 @@ import WhatToDo from './components/WhatToDo'
 import PatientBar from './components/PatientBar'
 import PolicyNotice from './components/PolicyNotice'
 import { LockScreen } from './components/Passcode'
+import CheckinWallet from './components/CheckinWallet'
+import { isCheckinMode } from './lib/checkin/session'
 import FamilyOverview from './components/FamilyOverview'
 import ComparePlans from './components/ComparePlans'
 import SharePanel from './components/SharePanel'
@@ -138,7 +140,28 @@ function AppContent() {
           <p>Your patient-controlled health data workspace</p>
         </header>
         <main className="app-main">
+          {isCheckinMode() && (
+            <p className="import-message">A check-in website is waiting. Unlock M5 to choose what to share with it.</p>
+          )}
           <LockScreen />
+        </main>
+      </div>
+    )
+  }
+
+  if (isCheckinMode()) {
+    return (
+      <div className="app-shell">
+        <header className="app-header">
+          <div className="app-header-title">
+            <img src={logo} alt="" width="32" height="32" />
+            <h1>M5 Whole Health</h1>
+          </div>
+          <p>Check-in: choose what to share</p>
+        </header>
+        <PolicyNotice />
+        <main className="app-main">
+          <CheckinWallet />
         </main>
       </div>
     )

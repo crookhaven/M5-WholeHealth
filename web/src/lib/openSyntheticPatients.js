@@ -41,5 +41,5 @@ export function bundleToRecords(bundle, { sourceType, documentName }) {
     throw new Error('No recognized FHIR resources found. This importer expects a single Bundle (not a bulk-export NDJSON file).')
   }
   const records = normalized.map(({ domain, data }) => createSourceRecord({ sourceType, documentName, domain, data }))
-  return { records, claimsData: extractClaims(bundle) }
+  return { records, claimsData: extractClaims(bundle), bundle }
 }
