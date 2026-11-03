@@ -107,9 +107,10 @@ function Questions({ items = [], answers, onChange, idPrefix }) {
     .map((i) => <Question key={i.linkId} item={i} answers={answers} onChange={onChange} idPrefix={idPrefix} />)
 }
 
-function ItemCard({ p, shared, onShare, answers, onAnswer }) {
+function ItemCard({ p, shared, onShare, answers, onAnswer, left = new Set(), onLeave }) {
   const { item } = p
-  const matches = p.kind === 'selection' ? p.entries : []
+  const matches = p.kind === 'selection' ? p.records : []
+  const kept = matches.filter((e) => !left.has(e.fullUrl)).length
   const shareable = p.kind === 'form' || matches.length > 0
   return (
     <section className={`checkin-item${shareable ? '' : ' checkin-item-none'}`}>
@@ -128,12 +129,23 @@ function ItemCard({ p, shared, onShare, answers, onAnswer }) {
       {p.kind === 'selection' && matches.length > 0 && (
         <details>
           <summary>
-            {matches.length} {matches.length === 1 ? 'record' : 'records'}
+            {shared && kept < matches.length
+              ? `${kept} of ${matches.length} records ticked`
+              : `${matches.length} ${matches.length === 1 ? 'record' : 'records'}`}
+            {shared && matches.length > 1 && ' (open to choose which)'}
           </summary>
           <ul className="checkin-records">
             {matches.map((e) => (
               <li key={e.fullUrl}>
-                {describeResource(e.resource)} <span className="record-source">({e.resource.resourceType})</span>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={shared && !left.has(e.fullUrl)}
+                    disabled={!shared}
+                    onChange={(ev) => onLeave(e.fullUrl, !ev.target.checked)}
+                  />
+                  {describeResource(e.resource)} <span className="record-source">({e.resource.resourceType})</span>
+                </label>
               </li>
             ))}
           </ul>
@@ -155,6 +167,8 @@ export default function CheckinWallet() {
   const [prepared, setPrepared] = useState(null)
   const [choices, setChoices] = useState({})
   const [answers, setAnswers] = useState({})
+  // Records unticked within an item: { [itemId]: Set(fullUrl) }.
+  const [leftOut, setLeftOut] = useState({})
   const [problem, setProblem] = useState(null)
   const [loading, setLoading] = useState(false)
   const context = session.status === 'request' ? session.context : null
@@ -192,6 +206,7 @@ export default function CheckinWallet() {
       setPrepared(p)
       setChoices(Object.fromEntries(p.map((x) => [x.item.id, x.kind === 'form' || (x.kind === 'selection' && x.entries.length > 0)])))
       setAnswers({})
+      setLeftOut({})
     })
     return () => {
       live = false
@@ -247,8 +262,8 @@ export default function CheckinWallet() {
       }
     }
     const allAnswers = Object.fromEntries(prepared.map((p) => [p.item.id, answerFor(p.item.id)]))
-    const response = buildResponse({ request, prepared, choices, answers: allAnswers, patientRef: patientRes?.fullUrl })
-    const sharedTitles = prepared.filter((p) => response.requestStatus.find((s) => s.item === p.item.id)?.status === 'fulfilled').map((p) => p.item.title)
+    const response = buildResponse({ request, prepared, choices, answers: allAnswers, patientRef: patientRes?.fullUrl, leftOut })
+    const sharedTitles = prepared.filter((p) => ['fulfilled', 'partial'].includes(response.requestStatus.find((s) => s.item === p.item.id)?.status)).map((p) => p.item.title)
     logActivity({
       action: 'Shared',
       patientId,
@@ -312,6 +327,13 @@ export default function CheckinWallet() {
             onShare={(v) => setChoices({ ...choices, [p.item.id]: v })}
             answers={answerFor(p.item.id)}
             onAnswer={(linkId, list) => setAnswer(p.item.id, linkId, list)}
+            left={leftOut[p.item.id]}
+            onLeave={(fullUrl, leave) => {
+              const next = new Set(leftOut[p.item.id] ?? [])
+              if (leave) next.add(fullUrl)
+              else next.delete(fullUrl)
+              setLeftOut({ ...leftOut, [p.item.id]: next })
+            }}
           />
         ))
       )}
