@@ -1198,3 +1198,69 @@ table {
 .activity-log td:first-child {
   white-space: nowrap;
 }
+
+/* SMART Health Check-in wallet */
+.checkin-wallet {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 44rem;
+  margin: 0 auto;
+}
+.checkin-who {
+  border: 2px solid currentColor;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+.checkin-who p {
+  margin: 0.25rem 0;
+}
+.checkin-origin {
+  font-size: 1.3rem;
+  font-weight: 700;
+  word-break: break-all;
+}
+.checkin-item {
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+.checkin-item-none {
+  opacity: 0.75;
+}
+.checkin-item-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.checkin-item-head input {
+  margin-top: 0.3rem;
+}
+.checkin-needed {
+  font-size: 0.9rem;
+}
+.checkin-summary {
+  display: block;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+.checkin-records {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+.checkin-form {
+  margin-top: 0.75rem;
+}
+.checkin-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 0.75rem;
+}
+.checkin-form legend {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.checkin-form fieldset label {
+  display: block;
+  margin: 0.2rem 0;
+}

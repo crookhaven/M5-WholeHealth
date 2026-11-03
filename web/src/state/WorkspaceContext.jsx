@@ -101,7 +101,8 @@ export function WorkspaceProvider({ children }) {
     renamePatient: (id, name) => dispatch({ type: 'RENAME_PATIENT', id, name }),
     movePatient: (id, offset) => dispatch({ type: 'MOVE_PATIENT', id, offset }),
     removePatient: (id) => dispatch({ type: 'REMOVE_PATIENT', id }),
-    addRecords: (records) => dispatch({ type: 'ADD_RECORDS', records }),
+    // fhir: the Bundles the records came from, kept as imported.
+    addRecords: (records, fhir) => dispatch({ type: 'ADD_RECORDS', records, fhir }),
     addAssertion: (assertion) => dispatch({ type: 'ADD_ASSERTION', assertion }),
     setFindingDecision: (findingId, status) =>
       dispatch({ type: 'SET_FINDING_DECISION', findingId, status }),

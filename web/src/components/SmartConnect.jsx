@@ -81,7 +81,7 @@ export default function SmartConnect() {
         if (empty) renamePatient(activeId, name)
         else addPatient(name)
         logActivity({ action: 'Connected', detail: `Signed in to ${session.label} and read the record`, purpose: 'Import your record from your provider' })
-        addRecords(records)
+        addRecords(records, [bundle])
         if (claims) addClaims(claims)
         setSkipped(notRead)
         setStatus(`Imported ${records.length} records for ${name} from ${session.label}${empty ? '' : ' as a new patient'}.`)

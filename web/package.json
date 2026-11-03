@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@smart-health-checkin/client": "https://github.com/smart-health-checkin/client/releases/download/v0.4.4/smart-health-checkin-client-0.4.4.tgz",
     "jspdf": "^4.2.1",
     "jsqr": "^1.4.0",
     "pako": "^3.0.2",
