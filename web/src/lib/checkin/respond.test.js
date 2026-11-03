@@ -105,4 +105,25 @@ describe('SMART Health Check-in wallet', () => {
     expect(response.requestStatus.find((s) => s.item === 'problems').status).toBe('declined')
     expect(response.artifacts.some((a) => a.fulfills.includes('problems'))).toBe(false)
   })
+
+  it('brings along records a shared record points to with a relative reference', async () => {
+    const withRefs = mergeFhirResources({}, [
+      {
+        resourceType: 'Bundle',
+        entry: [
+          { fullUrl: 'https://x.example/Patient/p1', resource: patient },
+          { fullUrl: 'https://x.example/Organization/o1', resource: { resourceType: 'Organization', id: 'o1', name: 'Atlas Health' } },
+          {
+            fullUrl: 'https://x.example/Coverage/cv1',
+            resource: { resourceType: 'Coverage', id: 'cv1', status: 'active', beneficiary: { reference: 'Patient/p1' }, payor: [{ reference: 'Organization/o1' }] },
+          },
+        ],
+      },
+    ])
+    const req = { ...request, items: [{ id: 'coverage', title: 'Insurance', content: { kind: 'selection.fhir', resourceTypes: ['Coverage'] }, accept: ['application/fhir+json'] }] }
+    const [p] = await prepareItems({ request: req, entries: walletEntries(withRefs) })
+    expect(p.entries.map((e) => e.resource.resourceType)).toEqual(['Coverage', 'Organization'])
+    expect(p.entries[0].resource.payor[0].reference).toBe('https://x.example/Organization/o1')
+    expect(p.records).toHaveLength(1)
+  })
 })

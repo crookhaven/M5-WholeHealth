@@ -1,4 +1,4 @@
-import { declineAll, selectEntries, selects } from '@smart-health-checkin/client/wallet'
+import { declineAll, selects } from '@smart-health-checkin/client/wallet'
 import { buildQuestionnaireResponse, resolveQuestionnaire } from './forms'
 
 // SMART Health Check-in, the wallet side (https://smart-health-checkin.org/spec/):
@@ -11,9 +11,55 @@ import { buildQuestionnaireResponse, resolveQuestionnaire } from './forms'
 const FHIR_JSON = 'application/fhir+json'
 const FHIR_VERSION = '4.0.1'
 
-// The patient's imported FHIR resources as Bundle entries.
+// Records that only describe who or where (a prescriber, an insurer, a
+// pharmacy) travel with the records that point to them. Clinical records
+// (an encounter, the condition a prescription treats) never do: they are
+// their own items, which the patient decides on separately.
+const SUPPORTING = new Set(['Practitioner', 'PractitionerRole', 'Organization', 'Location', 'Medication', 'RelatedPerson'])
+
+export function withSupporting(records, all, exclude = []) {
+  const byUrl = new Map(all.map((e) => [e.fullUrl, e]))
+  const skip = new Set(exclude)
+  const out = new Map(records.map((e) => [e.fullUrl, e]))
+  const visit = (value) => {
+    if (Array.isArray(value)) return value.forEach(visit)
+    if (!value || typeof value !== 'object') return
+    for (const [k, v] of Object.entries(value)) {
+      if (k === 'reference' && typeof v === 'string') {
+        const target = byUrl.get(v)
+        if (target && !skip.has(v) && !out.has(v) && SUPPORTING.has(target.resource.resourceType)) {
+          out.set(v, target)
+          visit(target.resource)
+        }
+      } else visit(v)
+    }
+  }
+  records.forEach((e) => visit(e.resource))
+  return [...out.values()]
+}
+
+// The patient's imported FHIR resources as Bundle entries. A relative
+// reference ("Practitioner/123") is pointed at the entry it means, by FHIR's
+// rule (resolved against the fullUrl's base, or the type and id), so the
+// prescriber, payer and other records a shared record refers to can come
+// along with it.
 export function walletEntries(fhirResources) {
-  return Object.entries(fhirResources ?? {}).map(([fullUrl, resource]) => ({ fullUrl, resource }))
+  const entries = Object.entries(fhirResources ?? {}).map(([fullUrl, resource]) => ({ fullUrl, resource }))
+  const byTypeId = new Map()
+  for (const e of entries) {
+    if (e.resource.id) byTypeId.set(`${e.resource.resourceType}/${e.resource.id}`, e.fullUrl)
+  }
+  const relative = /^[A-Z][A-Za-z]+\/[A-Za-z0-9\-.]{1,64}$/
+  const rewrite = (value) => {
+    if (Array.isArray(value)) return value.map(rewrite)
+    if (!value || typeof value !== 'object') return value
+    const out = {}
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = k === 'reference' && typeof v === 'string' && relative.test(v) && byTypeId.has(v) ? byTypeId.get(v) : rewrite(v)
+    }
+    return out
+  }
+  return entries.map((e) => ({ fullUrl: e.fullUrl, resource: rewrite(e.resource) }))
 }
 
 export function patientEntry(entries) {
@@ -38,7 +84,7 @@ export async function prepareItems({ request, unsupportedItems = [], entries, fe
         // The records that answer the item, which the patient can pick from;
         // records they only point to (a prescriber, a payer) come along.
         const records = noSelector ? entries : entries.filter((e) => selects(c, e.resource))
-        return { kind: 'selection', item, records, all: entries, exclude, entries: selectEntries(c, entries, { exclude }) }
+        return { kind: 'selection', item, records, all: entries, exclude, entries: withSupporting(records, entries, exclude) }
       }
       if (item.content?.kind === 'form.fhir') {
         try {
@@ -61,8 +107,7 @@ const bundle = (entries) => ({
 // The records the patient left ticked, with the records they point to.
 export function chosenEntries(p, left = new Set()) {
   if (!left.size) return p.entries
-  const kept = p.all.filter((e) => !left.has(e.fullUrl))
-  return selectEntries(p.item.content, kept, { exclude: p.exclude })
+  return withSupporting(p.records.filter((e) => !left.has(e.fullUrl)), p.all, p.exclude)
 }
 
 // The response: one status per item, and the records and form answers the
