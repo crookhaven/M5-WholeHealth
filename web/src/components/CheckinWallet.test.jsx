@@ -63,4 +63,27 @@ describe('CheckinWallet', () => {
     ])
     expect(response.artifacts[0].value.entry[0].resource.id).toBe('p1')
   })
+
+  it('will not send a form with no answers', async () => {
+    const reply = vi.fn()
+    render(
+      <WorkspaceProvider>
+        <CheckinWallet />
+      </WorkspaceProvider>,
+    )
+    const form = {
+      id: 'phq2',
+      title: 'Mood',
+      content: { kind: 'form.fhir', questionnaire: { resourceType: 'Questionnaire', url: 'https://e.org/q', item: [{ linkId: 'q1', type: 'choice', text: 'Little interest', answerOption: [{ valueCoding: { code: 'a', display: 'Not at all' } }] }] } },
+      accept: ['application/fhir+json'],
+    }
+    act(() => setSessionForTests({ status: 'request', context: { request: { ...request, items: [form] }, origin: 'https://clinic.example', unsupportedItems: [] }, reply }))
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: "Share what's ticked" }))
+    expect(reply).not.toHaveBeenCalled()
+    expect(screen.getByText(/Answer the questions in "Mood"/)).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Not at all' }))
+    await user.click(screen.getByRole('button', { name: "Share what's ticked" }))
+    expect(reply.mock.calls[0][0].response.artifacts[0].value.item[0].answer[0].valueCoding.code).toBe('a')
+  })
 })

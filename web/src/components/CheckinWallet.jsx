@@ -236,6 +236,10 @@ export default function CheckinWallet() {
   function send() {
     for (const p of prepared) {
       if (p.kind !== 'form' || !choices[p.item.id]) continue
+      if (answerFor(p.item.id).size === 0) {
+        setProblem(`Answer the questions in "${p.item.title}", or untick it to leave it out.`)
+        return
+      }
       const missing = missingRequired(p.questionnaire, answerFor(p.item.id))
       if (missing.length) {
         setProblem(`Answer "${missing[0]}" in ${p.item.title}, or untick it to leave it out.`)
