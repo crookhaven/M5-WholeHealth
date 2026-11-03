@@ -82,4 +82,27 @@ describe('SMART Health Check-in wallet', () => {
     expect(describeResource(patient)).toBe('Max Test')
     expect(describeResource(condition)).toBe('Hypertension')
   })
+
+  it('shares only the records the patient leaves ticked, as partial', async () => {
+    const two = mergeFhirResources(fhir, [
+      { resourceType: 'Bundle', entry: [{ fullUrl: 'https://x.example/Condition/c2', resource: { ...condition, id: 'c2', code: { text: 'Gout' } } }] },
+    ])
+    const prepared = await prepareItems({ request, entries: walletEntries(two) })
+    const leftOut = { problems: new Set(['https://x.example/Condition/c1']) }
+    const response = buildResponse({ request, prepared, choices: { problems: true }, answers: {}, leftOut })
+    const problems = response.requestStatus.find((s) => s.item === 'problems')
+    expect(problems.status).toBe('partial')
+    expect(problems.message).toMatch('1 of 2')
+    const sent = response.artifacts.find((a) => a.fulfills.includes('problems')).value.entry.map((e) => e.resource.id)
+    expect(sent).toEqual(['c2'])
+    expect(checkWalletResponse(request, response)).toEqual([])
+  })
+
+  it('declines an item when every record is unticked', async () => {
+    const prepared = await prepareItems({ request, entries: walletEntries(fhir) })
+    const leftOut = { problems: new Set(['https://x.example/Condition/c1']) }
+    const response = buildResponse({ request, prepared, choices: { problems: true }, answers: {}, leftOut })
+    expect(response.requestStatus.find((s) => s.item === 'problems').status).toBe('declined')
+    expect(response.artifacts.some((a) => a.fulfills.includes('problems'))).toBe(false)
+  })
 })

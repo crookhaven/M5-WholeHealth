@@ -1,4 +1,4 @@
-import { declineAll, selectEntries } from '@smart-health-checkin/client/wallet'
+import { declineAll, selectEntries, selects } from '@smart-health-checkin/client/wallet'
 import { buildQuestionnaireResponse, resolveQuestionnaire } from './forms'
 
 // SMART Health Check-in, the wallet side (https://smart-health-checkin.org/spec/):
@@ -32,8 +32,13 @@ export async function prepareItems({ request, unsupportedItems = [], entries, fe
         return { kind: 'unsupported', item, reason: `M5 shares FHIR JSON, and this item accepts only ${item.accept?.join(', ')}` }
       }
       if (item.content?.kind === 'selection.fhir') {
-        const matched = selectEntries(item.content, entries, { exclude: patient ? [patient.fullUrl] : [] })
-        return { kind: 'selection', item, entries: matched }
+        const exclude = patient ? [patient.fullUrl] : []
+        const c = item.content
+        const noSelector = !c.profiles?.length && !c.profilesFrom?.length && !c.resourceTypes?.length
+        // The records that answer the item, which the patient can pick from;
+        // records they only point to (a prescriber, a payer) come along.
+        const records = noSelector ? entries : entries.filter((e) => selects(c, e.resource))
+        return { kind: 'selection', item, records, all: entries, exclude, entries: selectEntries(c, entries, { exclude }) }
       }
       if (item.content?.kind === 'form.fhir') {
         try {
@@ -53,10 +58,18 @@ const bundle = (entries) => ({
   entry: entries.map((e) => ({ fullUrl: e.fullUrl, resource: e.resource })),
 })
 
+// The records the patient left ticked, with the records they point to.
+export function chosenEntries(p, left = new Set()) {
+  if (!left.size) return p.entries
+  const kept = p.all.filter((e) => !left.has(e.fullUrl))
+  return selectEntries(p.item.content, kept, { exclude: p.exclude })
+}
+
 // The response: one status per item, and the records and form answers the
 // patient chose to share. choices: { [itemId]: true | false }; answers:
-// { [itemId]: Map(linkId -> answers) }.
-export function buildResponse({ request, prepared, choices, answers, patientRef }) {
+// { [itemId]: Map(linkId -> answers) }; leftOut: { [itemId]: Set(fullUrl) },
+// records the patient unticked within an item.
+export function buildResponse({ request, prepared, choices, answers, patientRef, leftOut = {} }) {
   const artifacts = []
   const requestStatus = []
   for (const p of prepared) {
@@ -65,7 +78,7 @@ export function buildResponse({ request, prepared, choices, answers, patientRef 
       requestStatus.push({ item: id, status: 'unsupported', message: p.reason })
       continue
     }
-    if (p.kind === 'selection' && p.entries.length === 0) {
+    if (p.kind === 'selection' && p.records.length === 0) {
       requestStatus.push({ item: id, status: 'unavailable', message: 'Nothing in this record matches.' })
       continue
     }
@@ -77,7 +90,17 @@ export function buildResponse({ request, prepared, choices, answers, patientRef 
       const qr = buildQuestionnaireResponse(p.questionnaire, answers[id] ?? new Map(), p.item.content.questionnaireCanonical, patientRef)
       artifacts.push({ id: `qr-${id}`, mediaType: FHIR_JSON, fhirVersion: FHIR_VERSION, fulfills: [id], value: qr })
     } else {
-      artifacts.push({ id: `fhir-${id}`, mediaType: FHIR_JSON, fhirVersion: FHIR_VERSION, fulfills: [id], value: bundle(p.entries) })
+      const left = leftOut[id] ?? new Set()
+      const kept = p.records.filter((e) => !left.has(e.fullUrl)).length
+      if (kept === 0) {
+        requestStatus.push({ item: id, status: 'declined' })
+        continue
+      }
+      artifacts.push({ id: `fhir-${id}`, mediaType: FHIR_JSON, fhirVersion: FHIR_VERSION, fulfills: [id], value: bundle(chosenEntries(p, left)) })
+      if (kept < p.records.length) {
+        requestStatus.push({ item: id, status: 'partial', message: `The patient chose to share ${kept} of ${p.records.length} records.` })
+        continue
+      }
     }
     requestStatus.push({ item: id, status: 'fulfilled' })
   }
