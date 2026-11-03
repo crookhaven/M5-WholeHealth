@@ -120,6 +120,9 @@ export function PasscodeSection() {
             <button type="button" onClick={() => setChanging(!changing)}>
               {changing ? 'Cancel' : 'Change passcode'}
             </button>
+            <button type="button" onClick={security.removePasscode}>
+              Remove passcode
+            </button>
           </div>
           {changing && <PasscodeForm onDone={() => setChanging(false)} />}
         </>
@@ -127,7 +130,7 @@ export function PasscodeSection() {
         <>
           <p>
             Set a passcode to encrypt the records M5 keeps in this browser, so someone else using this device
-            can&apos;t read them. It&apos;s required before connecting to a health system.
+            can&apos;t read them. It&apos;s recommended before connecting to a health system.
           </p>
           <PasscodeForm />
         </>
