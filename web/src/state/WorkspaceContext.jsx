@@ -65,6 +65,13 @@ export function WorkspaceProvider({ children }) {
       setEncrypted(true)
       log({ action: wasEncrypted ? 'Passcode changed' : 'Passcode set', purpose: 'Encrypt the saved records' })
     },
+    // Turns encryption off: the next save is plain again (the log entry is that save).
+    removePasscode() {
+      if (!vaultKey.current) return
+      vaultKey.current = null
+      setEncrypted(false)
+      log({ action: 'Passcode removed', purpose: 'Records saved without encryption' })
+    },
     lock() {
       if (!vaultKey.current) return
       vaultKey.current = null

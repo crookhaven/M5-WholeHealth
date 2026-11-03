@@ -125,11 +125,11 @@ export default function SmartConnect() {
       {preset?.note && <p className="section-help">{preset.note}</p>}
       {!security.encrypted && (
         <p className="passcode-required">
-          <strong>Set a passcode first</strong>, under Protect your records above. Records from a health system are
-          kept in this browser encrypted with it.
+          Tip: set a passcode under Protect your records above, so records from a health system are kept encrypted in this
+          browser.
         </p>
       )}
-      <button type="button" onClick={signIn} disabled={busy !== null || !iss || !clientId || !security.encrypted}>
+      <button type="button" onClick={signIn} disabled={busy !== null || !iss || !clientId}>
         {busy ?? 'Sign in and import'}
       </button>
       <p className="section-help">
