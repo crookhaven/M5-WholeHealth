@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkspaceProvider } from '../state/WorkspaceContext'
 import { STORAGE_KEY } from '../state/workspaceState'
@@ -86,4 +88,66 @@ describe('CheckinWallet', () => {
     await user.click(screen.getByRole('button', { name: "Share what's ticked" }))
     expect(reply.mock.calls[0][0].response.artifacts[0].value.item[0].answer[0].valueCoding.code).toBe('a')
   })
+
+  it('prefills the intake form, makes the patient check it, and keeps shared records in step', async () => {
+    const read = (rel) => JSON.parse(readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8'))
+    const intake = read('../../public/questionnaires/patient-intake.json')
+    const maximus = read('../../../synthetic-patients/maximus-decimus-meridius/maximus-decimus-meridius.json')
+    const fhirResources = Object.fromEntries(maximus.entry.map((e) => [e.fullUrl, e.resource]))
+    const slice = { sourceRecords: [], assertions: [], findingDecisions: {}, sharingSelection: {}, gatewayResults: {}, claimsData: null, fhirResources }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, patients: [{ id: 'x', name: 'Maximus' }], activeId: 'x', data: { x: slice }, activity: [] }))
+    const reply = vi.fn()
+    render(
+      <WorkspaceProvider>
+        <CheckinWallet />
+      </WorkspaceProvider>,
+    )
+    const items = [
+      { id: 'allergies', title: 'Allergies', content: { kind: 'selection.fhir', profiles: [`${US_CORE}us-core-allergyintolerance`] }, accept: ['application/fhir+json'] },
+      { id: 'intake', title: 'Patient intake', content: { kind: 'form.fhir', questionnaire: intake }, accept: ['application/fhir+json'] },
+    ]
+    act(() => setSessionForTests({ status: 'request', context: { request: { ...request, items }, origin: 'https://clinic.example', unsupportedItems: [] }, reply }))
+    const user = userEvent.setup()
+
+    // Filled in from the records, each entry saying where it came from
+    expect(await screen.findByText(/M5 filled in what it could from your records/)).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Maximus')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('penicillin G')).toBeInTheDocument()
+    expect(screen.getAllByText('From your allergy list')).toHaveLength(4)
+
+    // Not sent until it's checked
+    await user.click(screen.getByRole('button', { name: "Share what's ticked" }))
+    expect(reply).not.toHaveBeenCalled()
+    expect(screen.getByText(/Check what M5 filled in from your records in "Patient intake"/)).toBeInTheDocument()
+
+    // Removing an allergy in the form unticks that record in the Allergies item
+    await user.click(screen.getByRole('button', { name: 'Remove Allergies: penicillin G' }))
+    expect(screen.getByText(/You changed or removed 1 of these in a form/)).toBeInTheDocument()
+    expect(screen.getByText(/1 of these in a form/).closest('section')).toHaveTextContent('3 of 4 records ticked')
+
+    // Correct a reaction, then check everything
+    const reaction = screen.getByDisplayValue('Angioedema')
+    await user.clear(reaction)
+    await user.type(reaction, 'Swollen lips')
+    for (;;) {
+      const buttons = screen.queryAllByRole('button', { name: / (is right|below are right)$|^All \d+ below are right$/ })
+      if (!buttons.length) break
+      await user.click(buttons[0])
+    }
+    expect(screen.getByText('Everything M5 filled in has been checked.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: "Share what's ticked" }))
+
+    const { response } = reply.mock.calls[0][0]
+    expect(response.requestStatus).toEqual([
+      { item: 'allergies', status: 'partial', message: 'The patient chose to share 3 of 4 records.' },
+      { item: 'intake', status: 'fulfilled' },
+    ])
+    const qr = response.artifacts.find((a) => a.fulfills.includes('intake')).value
+    expect(qr.questionnaire).toBe(`${intake.url}|${intake.version}`)
+    const allergies = qr.item.filter((i) => i.linkId === 'allergies')
+    expect(allergies.map((g) => g.item[0].answer[0].valueCoding.display)).toEqual(['lisinopril', 'Seafood', 'Latex'])
+    expect(allergies[0].item.find((i) => i.linkId === 'allergy-reaction').answer).toEqual([{ valueString: 'Swollen lips' }])
+    expect(within(document.body).queryByText(/penicillin G/)).toBeInTheDocument() // still shown, struck through, so it can be undone
+  })
 })
+

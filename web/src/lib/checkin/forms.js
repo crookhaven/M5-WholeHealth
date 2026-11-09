@@ -1,6 +1,8 @@
 // Questionnaires in SMART Health Check-in form items (spec §5.4.2): getting
 // the form, which questions show, and the QuestionnaireResponse.
 
+import { asForm, missingRequired as missingInForm, responseItems } from './formState'
+
 const splitCanonical = (c) => {
   const bar = c.indexOf('|')
   return bar < 0 ? { url: c, version: undefined } : { url: c.slice(0, bar), version: c.slice(bar + 1) }
@@ -50,20 +52,10 @@ export function isEnabled(item, answers) {
   return (item.enableBehavior ?? 'any') === 'all' ? results.every(Boolean) : results.some(Boolean)
 }
 
-// Hidden and unanswered questions are left out. The questionnaire canonical
-// echoes the request exactly, |version included (§5.5).
+// Hidden, removed and unanswered questions are left out. answers is a form
+// from formState.js (or, for simple forms, a Map of linkId -> answers). The
+// questionnaire canonical echoes the request exactly, |version included (§5.5).
 export function buildQuestionnaireResponse(questionnaire, answers, canonical, patientRef) {
-  const build = (items = []) =>
-    items
-      .filter((i) => i.type !== 'display' && isEnabled(i, answers))
-      .flatMap((i) => {
-        if (i.type === 'group') {
-          const children = build(i.item)
-          return children.length ? [{ linkId: i.linkId, ...(i.text ? { text: i.text } : {}), item: children }] : []
-        }
-        const given = answers.get(i.linkId)
-        return given?.length ? [{ linkId: i.linkId, ...(i.text ? { text: i.text } : {}), answer: given }] : []
-      })
   const q = questionnaire
   return {
     resourceType: 'QuestionnaireResponse',
@@ -71,20 +63,11 @@ export function buildQuestionnaireResponse(questionnaire, answers, canonical, pa
     status: 'completed',
     ...(patientRef ? { subject: { reference: patientRef } } : {}),
     authored: new Date().toISOString(),
-    item: build(q.item),
+    item: responseItems(q, asForm(answers)),
   }
 }
 
 // Questions that need an answer before sending and don't have one.
 export function missingRequired(questionnaire, answers) {
-  const missing = []
-  const walk = (items = []) => {
-    for (const i of items) {
-      if (!isEnabled(i, answers)) continue
-      if (i.type === 'group') walk(i.item)
-      else if (i.required && i.type !== 'display' && !(answers.get(i.linkId)?.length)) missing.push(i.text ?? i.linkId)
-    }
-  }
-  walk(questionnaire.item)
-  return missing
+  return missingInForm(questionnaire, asForm(answers))
 }

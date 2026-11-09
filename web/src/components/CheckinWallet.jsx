@@ -2,112 +2,49 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useWorkspace } from '../state/WorkspaceContext'
 import { walletSession } from '../lib/checkin/session'
 import { buildResponse, declineAll, describeResource, patientEntry, prepareItems, walletEntries } from '../lib/checkin/respond'
-import { isEnabled, missingRequired } from '../lib/checkin/forms'
+import { missingRequired } from '../lib/checkin/forms'
+import { asForm, formFromPrefill, pendingReview, responseItems, wantsPrefill } from '../lib/checkin/formState'
+import CheckinForm from './CheckinForm'
 import { CHECKIN_TEST_PATIENT, bundleToRecords, fetchFromGitHub } from '../lib/openSyntheticPatients'
 
 // M5 as a SMART Health Check-in web wallet: a check-in page opens M5 with
 // ?checkin and asks for records and forms; the patient picks what to share,
 // item by item, and M5 sends it back encrypted to that page only.
 
-function answerKey(a) {
-  return JSON.stringify(a)
+// Plain words for where a prefilled answer came from.
+const SOURCE_WORDS = {
+  Patient: 'details',
+  AllergyIntolerance: 'allergy list',
+  MedicationRequest: 'medication list',
+  MedicationStatement: 'medication list',
+  Condition: 'health problems',
+  Immunization: 'vaccinations',
+  Coverage: 'insurance',
+  RelatedPerson: 'contacts',
+  FamilyMemberHistory: 'family history',
+  Observation: 'health record',
 }
 
-function optionValue(o) {
-  if (o.valueCoding) return { valueCoding: o.valueCoding }
-  if (o.valueString !== undefined) return { valueString: o.valueString }
-  if (o.valueInteger !== undefined) return { valueInteger: o.valueInteger }
-  if (o.valueDate !== undefined) return { valueDate: o.valueDate }
-  return null
+function describeSources(refs) {
+  const words = [...new Set(refs.map((r) => SOURCE_WORDS[r.split('/')[0]] ?? 'records'))]
+  return words.join(' and ')
 }
 
-function optionLabel(o) {
-  return o.valueCoding?.display ?? o.valueCoding?.code ?? o.valueString ?? String(o.valueInteger ?? o.valueDate ?? '')
-}
+const typeId = (r) => (r?.resourceType && r.id ? `${r.resourceType}/${r.id}` : null)
 
-function Question({ item, answers, onChange, idPrefix }) {
-  const id = `${idPrefix}-${item.linkId}`
-  const given = answers.get(item.linkId) ?? []
-  const label = `${item.prefix ? `${item.prefix} ` : ''}${item.text ?? ''}`
-  const set = (list) => onChange(item.linkId, list)
-  if (item.type === 'display') return <p className="q-display">{item.text}</p>
-  if (item.type === 'group') {
-    return (
-      <fieldset className="q-group">
-        {item.text && <legend>{item.text}</legend>}
-        <Questions items={item.item} answers={answers} onChange={onChange} idPrefix={idPrefix} />
-      </fieldset>
-    )
+// The records shared in other items that a form entry came from, as
+// { itemId: [fullUrl] }.
+function recordsFor(prepared, refs) {
+  const out = {}
+  for (const p of prepared ?? []) {
+    if (p.kind !== 'selection') continue
+    const hits = p.records.filter((e) => refs.includes(typeId(e.resource))).map((e) => e.fullUrl)
+    if (hits.length) out[p.item.id] = hits
   }
-  if (item.type === 'choice' || item.type === 'open-choice') {
-    const options = (item.answerOption ?? []).map((o) => ({ value: optionValue(o), label: optionLabel(o) })).filter((o) => o.value)
-    const chosen = new Set(given.map(answerKey))
-    return (
-      <fieldset className="q-choice">
-        <legend>
-          {label}
-          {item.required && <span className="q-req"> (needed)</span>}
-        </legend>
-        {options.map((o, i) => (
-          <label key={i}>
-            <input
-              type={item.repeats ? 'checkbox' : 'radio'}
-              name={id}
-              checked={chosen.has(answerKey(o.value))}
-              onChange={(e) => {
-                if (!item.repeats) set([o.value])
-                else set(e.target.checked ? [...given, o.value] : given.filter((g) => answerKey(g) !== answerKey(o.value)))
-              }}
-            />
-            {o.label}
-          </label>
-        ))}
-      </fieldset>
-    )
-  }
-  if (item.type === 'boolean') {
-    const v = given[0]?.valueBoolean
-    return (
-      <fieldset className="q-choice">
-        <legend>{label}</legend>
-        {[
-          [true, 'Yes'],
-          [false, 'No'],
-        ].map(([val, text]) => (
-          <label key={text}>
-            <input type="radio" name={id} checked={v === val} onChange={() => set([{ valueBoolean: val }])} />
-            {text}
-          </label>
-        ))}
-      </fieldset>
-    )
-  }
-  const kinds = {
-    string: ['text', (v) => ({ valueString: v })],
-    text: ['text', (v) => ({ valueString: v })],
-    integer: ['number', (v) => ({ valueInteger: Number.parseInt(v, 10) })],
-    decimal: ['number', (v) => ({ valueDecimal: Number(v) })],
-    date: ['date', (v) => ({ valueDate: v })],
-  }
-  const kind = kinds[item.type]
-  if (!kind) return <p className="section-help">{label} (M5 can&apos;t answer this kind of question; it will be left blank.)</p>
-  const current = given[0] ? Object.values(given[0])[0] : ''
-  return (
-    <label className="file-label">
-      {label}
-      {item.required && <span className="q-req"> (needed)</span>}
-      <input id={id} type={kind[0]} value={current} onChange={(e) => set(e.target.value === '' ? [] : [kind[1](e.target.value)])} />
-    </label>
-  )
+  return out
 }
 
-function Questions({ items = [], answers, onChange, idPrefix }) {
-  return items
-    .filter((i) => isEnabled(i, answers))
-    .map((i) => <Question key={i.linkId} item={i} answers={answers} onChange={onChange} idPrefix={idPrefix} />)
-}
-
-function ItemCard({ p, shared, onShare, answers, onAnswer, left = new Set(), onLeave }) {
+function ItemCard({ p, shared, onShare, form, onForm, skipped, notes = new Map(), left = new Set(), onLeave }) {
   const { item } = p
   const matches = p.kind === 'selection' ? p.records : []
   const kept = matches.filter((e) => !left.has(e.fullUrl)).length
@@ -125,6 +62,11 @@ function ItemCard({ p, shared, onShare, answers, onAnswer, left = new Set(), onL
       {p.kind === 'unsupported' && <p className="section-help">M5 can&apos;t answer this: {p.reason}</p>}
       {p.kind === 'selection' && matches.length === 0 && (
         <p className="section-help">Nothing in this person&apos;s records matches, so M5 will say none is available.</p>
+      )}
+      {p.kind === 'selection' && matches.some((e) => notes.has(e.fullUrl)) && (
+        <p className="checkin-note">
+          You changed or removed {matches.filter((e) => notes.has(e.fullUrl)).length} of these in a form. Open the list to see which.
+        </p>
       )}
       {p.kind === 'selection' && matches.length > 0 && (
         <details>
@@ -146,15 +88,21 @@ function ItemCard({ p, shared, onShare, answers, onAnswer, left = new Set(), onL
                   />
                   {describeResource(e.resource)} <span className="record-source">({e.resource.resourceType})</span>
                 </label>
+                {notes.get(e.fullUrl) && <span className="checkin-note">{notes.get(e.fullUrl)}</span>}
               </li>
             ))}
           </ul>
         </details>
       )}
       {p.kind === 'form' && shared && (
-        <div className="checkin-form">
-          <Questions items={p.questionnaire.item} answers={answers} onChange={onAnswer} idPrefix={`q-${item.id}`} />
-        </div>
+        <CheckinForm
+          questionnaire={p.questionnaire}
+          form={form}
+          onForm={onForm}
+          idPrefix={`q-${item.id}`}
+          describeSources={describeSources}
+          skipped={skipped}
+        />
       )}
     </section>
   )
@@ -169,6 +117,11 @@ export default function CheckinWallet() {
   const [answers, setAnswers] = useState({})
   // Records unticked within an item: { [itemId]: Set(fullUrl) }.
   const [leftOut, setLeftOut] = useState({})
+  // Records M5 unticked because the patient removed them in a form, so
+  // undoing the removal can tick them again: { [itemId]: Set(fullUrl) }.
+  const [autoLeft, setAutoLeft] = useState({})
+  // Prefilled answers left blank because the record's code wasn't a choice.
+  const [skipped, setSkipped] = useState({})
   const [problem, setProblem] = useState(null)
   const [loading, setLoading] = useState(false)
   const context = session.status === 'request' ? session.context : null
@@ -201,12 +154,33 @@ export default function CheckinWallet() {
     if (!context) return
     let live = true
     setPrepared(null)
-    prepareItems({ request: context.request, unsupportedItems: context.unsupportedItems, entries: walletEntries(resources) }).then((p) => {
+    prepareItems({ request: context.request, unsupportedItems: context.unsupportedItems, entries: walletEntries(resources) }).then(async (p) => {
+      // Forms that ask for it (SDC) are filled in from the records as
+      // imported. The FHIRPath engine loads only when a form needs it.
+      const records = Object.values(resources ?? {})
+      const patientRecord = records.find((r) => r.resourceType === 'Patient')
+      const prefill = {}
+      const blank = {}
+      const toFill = p.filter((x) => x.kind === 'form' && wantsPrefill(x.questionnaire))
+      if (patientRecord && toFill.length) {
+        try {
+          const { populate } = await import('../lib/checkin/populate')
+          for (const x of toFill) {
+            const { response, origins, warnings } = populate(x.questionnaire, { patient: patientRecord, resources: records })
+            prefill[x.item.id] = formFromPrefill(x.questionnaire, response, origins)
+            blank[x.item.id] = warnings.filter((w) => w.includes("isn't one of the form's choices")).length
+          }
+        } catch {
+          // Prefill is a convenience: the patient can still fill the form in.
+        }
+      }
       if (!live) return
       setPrepared(p)
       setChoices(Object.fromEntries(p.map((x) => [x.item.id, x.kind === 'form' || (x.kind === 'selection' && x.entries.length > 0)])))
-      setAnswers({})
+      setAnswers(prefill)
+      setSkipped(blank)
       setLeftOut({})
+      setAutoLeft({})
     })
     return () => {
       live = false
@@ -238,24 +212,79 @@ export default function CheckinWallet() {
   const patientRes = patientEntry(entries)
 
   function answerFor(itemId) {
-    return answers[itemId] ?? new Map()
+    return asForm(answers[itemId])
   }
 
-  function setAnswer(itemId, linkId, list) {
-    const next = new Map(answerFor(itemId))
-    if (list.length) next.set(linkId, list)
-    else next.delete(linkId)
+  // A form changed. If the patient removed an entry M5 filled in from a
+  // record they're also being asked to share, untick that record too (and
+  // tick it again if they undo); they can still change it by hand.
+  function setForm(itemId, next) {
+    const before = answerFor(itemId)
     setAnswers({ ...answers, [itemId]: next })
+    const left = { ...leftOut }
+    const auto = { ...autoLeft }
+    let changed = false
+    for (const [unit, status] of next.review) {
+      const was = before.review.get(unit)
+      if ((status === 'removed') === (was === 'removed')) continue
+      for (const [target, urls] of Object.entries(recordsFor(prepared, next.sources.get(unit) ?? []))) {
+        const l = new Set(left[target] ?? [])
+        const a = new Set(auto[target] ?? [])
+        for (const url of urls) {
+          if (status === 'removed' && !l.has(url)) {
+            l.add(url)
+            a.add(url)
+          } else if (status !== 'removed' && a.has(url)) {
+            l.delete(url)
+            a.delete(url)
+          }
+        }
+        left[target] = l
+        auto[target] = a
+        changed = true
+      }
+    }
+    if (changed) {
+      setLeftOut(left)
+      setAutoLeft(auto)
+    }
+  }
+
+  // Notes beside shared records that the patient changed or removed in a form.
+  const notes = new Map()
+  for (const p of prepared ?? []) {
+    if (p.kind !== 'form' || !choices[p.item.id]) continue
+    const form = answerFor(p.item.id)
+    for (const [unit, status] of form.review) {
+      const removed = status === 'removed'
+      if (!removed && !form.edited.has(unit)) continue
+      for (const urls of Object.values(recordsFor(prepared, form.sources.get(unit) ?? []))) {
+        for (const url of urls) {
+          notes.set(
+            url,
+            removed
+              ? `You removed this in "${p.item.title}", so it's unticked.`
+              : `You corrected this in "${p.item.title}". The record itself is shared as it is unless you untick it.`,
+          )
+        }
+      }
+    }
   }
 
   function send() {
     for (const p of prepared) {
       if (p.kind !== 'form' || !choices[p.item.id]) continue
-      if (answerFor(p.item.id).size === 0) {
+      const form = answerFor(p.item.id)
+      if (responseItems(p.questionnaire, form).length === 0) {
         setProblem(`Answer the questions in "${p.item.title}", or untick it to leave it out.`)
         return
       }
-      const missing = missingRequired(p.questionnaire, answerFor(p.item.id))
+      const unchecked = pendingReview(form).length
+      if (unchecked) {
+        setProblem(`Check what M5 filled in from your records in "${p.item.title}" (${unchecked} left), or untick it to leave it out.`)
+        return
+      }
+      const missing = missingRequired(p.questionnaire, form)
       if (missing.length) {
         setProblem(`Answer "${missing[0]}" in ${p.item.title}, or untick it to leave it out.`)
         return
@@ -325,14 +354,20 @@ export default function CheckinWallet() {
             p={p}
             shared={!!choices[p.item.id]}
             onShare={(v) => setChoices({ ...choices, [p.item.id]: v })}
-            answers={answerFor(p.item.id)}
-            onAnswer={(linkId, list) => setAnswer(p.item.id, linkId, list)}
+            form={answerFor(p.item.id)}
+            onForm={(next) => setForm(p.item.id, next)}
+            skipped={skipped[p.item.id] ?? 0}
+            notes={notes}
             left={leftOut[p.item.id]}
             onLeave={(fullUrl, leave) => {
               const next = new Set(leftOut[p.item.id] ?? [])
               if (leave) next.add(fullUrl)
               else next.delete(fullUrl)
               setLeftOut({ ...leftOut, [p.item.id]: next })
+              // Ticked or unticked by hand: no longer M5's doing.
+              const auto = new Set(autoLeft[p.item.id] ?? [])
+              auto.delete(fullUrl)
+              setAutoLeft({ ...autoLeft, [p.item.id]: auto })
             }}
           />
         ))
