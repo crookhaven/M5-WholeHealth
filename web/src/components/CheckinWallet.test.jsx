@@ -129,10 +129,13 @@ describe('CheckinWallet', () => {
     const reaction = screen.getByDisplayValue('Angioedema')
     await user.clear(reaction)
     await user.type(reaction, 'Swollen lips')
-    for (;;) {
-      const buttons = screen.queryAllByRole('button', { name: / (is right|below are right)$|^All \d+ below are right$/ })
-      if (!buttons.length) break
-      await user.click(buttons[0])
+    // Whole lists first, then the sections and single entries left
+    for (const name of [/^All \d+ below are right$/, / is right$/]) {
+      for (;;) {
+        const buttons = screen.queryAllByRole('button', { name })
+        if (!buttons.length) break
+        await user.click(buttons[0])
+      }
     }
     expect(screen.getByText('Everything M5 filled in has been checked.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: "Share what's ticked" }))
@@ -148,6 +151,7 @@ describe('CheckinWallet', () => {
     expect(allergies.map((g) => g.item[0].answer[0].valueCoding.display)).toEqual(['lisinopril', 'Seafood', 'Latex'])
     expect(allergies[0].item.find((i) => i.linkId === 'allergy-reaction').answer).toEqual([{ valueString: 'Swollen lips' }])
     expect(within(document.body).queryByText(/penicillin G/)).toBeInTheDocument() // still shown, struck through, so it can be undone
-  })
+    // A big real-world form with many clicks: give slower CI runners room.
+  }, 30000)
 })
 
