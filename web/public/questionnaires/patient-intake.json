@@ -1,0 +1,2182 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "m5-patient-intake",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-pop-exp"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-launchContext",
+      "extension": [
+        {
+          "url": "name",
+          "valueCoding": {
+            "system": "http://hl7.org/fhir/uv/sdc/CodeSystem/launchContext",
+            "code": "patient"
+          }
+        },
+        {
+          "url": "type",
+          "valueCode": "Patient"
+        },
+        {
+          "url": "description",
+          "valueString": "The patient filling in the form"
+        }
+      ]
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "relatedPersons",
+        "language": "application/x-fhir-query",
+        "expression": "RelatedPerson?patient={{%patient.id}}"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "allergies",
+        "language": "application/x-fhir-query",
+        "expression": "AllergyIntolerance?patient={{%patient.id}}&clinical-status=active"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "medicationRequests",
+        "language": "application/x-fhir-query",
+        "expression": "MedicationRequest?patient={{%patient.id}}&status=active"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "medicationStatements",
+        "language": "application/x-fhir-query",
+        "expression": "MedicationStatement?patient={{%patient.id}}&status=active"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "conditions",
+        "language": "application/x-fhir-query",
+        "expression": "Condition?patient={{%patient.id}}&category=problem-list-item"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "familyHistory",
+        "language": "application/x-fhir-query",
+        "expression": "FamilyMemberHistory?patient={{%patient.id}}"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "immunizations",
+        "language": "application/x-fhir-query",
+        "expression": "Immunization?patient={{%patient.id}}&status=completed"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "coverages",
+        "language": "application/x-fhir-query",
+        "expression": "Coverage?patient={{%patient.id}}&status=active&_include=Coverage:payor"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "smoking",
+        "language": "application/x-fhir-query",
+        "expression": "Observation?patient={{%patient.id}}&code=http://loinc.org|72166-2&_sort=-date&_count=1"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "pregnancy",
+        "language": "application/x-fhir-query",
+        "expression": "Observation?patient={{%patient.id}}&code=http://loinc.org|82810-3&_sort=-date&_count=1"
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/variable",
+      "valueExpression": {
+        "name": "sexualOrientation",
+        "language": "application/x-fhir-query",
+        "expression": "Observation?patient={{%patient.id}}&code=http://loinc.org|76690-7&_sort=-date&_count=1"
+      }
+    }
+  ],
+  "url": "https://crookhaven.github.io/M5-WholeHealth/questionnaires/patient-intake.json",
+  "version": "0.1.0",
+  "name": "M5PatientIntake",
+  "title": "Patient Intake Questionnaire",
+  "status": "active",
+  "experimental": true,
+  "subjectType": [
+    "Patient"
+  ],
+  "publisher": "M5 Whole Health",
+  "description": "Patient intake form for SMART Health Check-in testing. Adapted from Medplum's patient intake questionnaire (https://github.com/medplum/medplum-patient-intake-demo, Apache License 2.0), with SDC expression-based population so a wallet can prefill it from the patient's own FHIR records, inline answer lists in place of value sets that need a terminology server, and SSN and gender identity made optional. A practice adopting it replaces \"[Practice Name]\" with its own name.",
+  "copyright": "Portions derived from the Medplum patient intake demo, licensed under the Apache License 2.0.",
+  "derivedFrom": [
+    "https://medplum.com/Questionnaire/patient-intake-questionnaire-example"
+  ],
+  "item": [
+    {
+      "linkId": "patient-demographics",
+      "text": "Demographics",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "first-name",
+          "text": "First Name",
+          "type": "string",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.name.where(use = 'official' or use.empty()).first().given.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "middle-name",
+          "text": "Middle Name",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.name.where(use = 'official' or use.empty()).first().given.skip(1).first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "last-name",
+          "text": "Last Name",
+          "type": "string",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.name.where(use = 'official' or use.empty()).first().family"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "dob",
+          "text": "Date of Birth",
+          "type": "date",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.birthDate"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "street",
+          "text": "Street",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.address.where(use = 'home' or use.empty()).first().line.join(', ')"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "city",
+          "text": "City",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.address.where(use = 'home' or use.empty()).first().city"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "state",
+          "text": "State",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueString": "AL"
+            },
+            {
+              "valueString": "AK"
+            },
+            {
+              "valueString": "AZ"
+            },
+            {
+              "valueString": "AR"
+            },
+            {
+              "valueString": "CA"
+            },
+            {
+              "valueString": "CO"
+            },
+            {
+              "valueString": "CT"
+            },
+            {
+              "valueString": "DE"
+            },
+            {
+              "valueString": "DC"
+            },
+            {
+              "valueString": "FL"
+            },
+            {
+              "valueString": "GA"
+            },
+            {
+              "valueString": "HI"
+            },
+            {
+              "valueString": "ID"
+            },
+            {
+              "valueString": "IL"
+            },
+            {
+              "valueString": "IN"
+            },
+            {
+              "valueString": "IA"
+            },
+            {
+              "valueString": "KS"
+            },
+            {
+              "valueString": "KY"
+            },
+            {
+              "valueString": "LA"
+            },
+            {
+              "valueString": "ME"
+            },
+            {
+              "valueString": "MD"
+            },
+            {
+              "valueString": "MA"
+            },
+            {
+              "valueString": "MI"
+            },
+            {
+              "valueString": "MN"
+            },
+            {
+              "valueString": "MS"
+            },
+            {
+              "valueString": "MO"
+            },
+            {
+              "valueString": "MT"
+            },
+            {
+              "valueString": "NE"
+            },
+            {
+              "valueString": "NV"
+            },
+            {
+              "valueString": "NH"
+            },
+            {
+              "valueString": "NJ"
+            },
+            {
+              "valueString": "NM"
+            },
+            {
+              "valueString": "NY"
+            },
+            {
+              "valueString": "NC"
+            },
+            {
+              "valueString": "ND"
+            },
+            {
+              "valueString": "OH"
+            },
+            {
+              "valueString": "OK"
+            },
+            {
+              "valueString": "OR"
+            },
+            {
+              "valueString": "PA"
+            },
+            {
+              "valueString": "RI"
+            },
+            {
+              "valueString": "SC"
+            },
+            {
+              "valueString": "SD"
+            },
+            {
+              "valueString": "TN"
+            },
+            {
+              "valueString": "TX"
+            },
+            {
+              "valueString": "UT"
+            },
+            {
+              "valueString": "VT"
+            },
+            {
+              "valueString": "VA"
+            },
+            {
+              "valueString": "WA"
+            },
+            {
+              "valueString": "WV"
+            },
+            {
+              "valueString": "WI"
+            },
+            {
+              "valueString": "WY"
+            },
+            {
+              "valueString": "AS"
+            },
+            {
+              "valueString": "GU"
+            },
+            {
+              "valueString": "MP"
+            },
+            {
+              "valueString": "PR"
+            },
+            {
+              "valueString": "VI"
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.address.where(use = 'home' or use.empty()).first().state"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "zip",
+          "text": "Zip",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.address.where(use = 'home' or use.empty()).first().postalCode"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "phone",
+          "text": "Phone",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "(%patient.telecom.where(system = 'phone').where(use = 'home') | %patient.telecom.where(system = 'phone').where(use != 'home')).first().value"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "phone-sms",
+          "text": "Phone (SMS)",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.telecom.where(system = 'phone').where(use = 'mobile').first().value"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "email",
+          "text": "Email",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.telecom.where(system = 'email').first().value"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "ssn",
+          "text": "Social Security Number",
+          "type": "string"
+        },
+        {
+          "linkId": "race",
+          "text": "Race",
+          "type": "choice",
+          "repeats": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "urn:oid:2.16.840.1.113883.6.238",
+                "code": "1002-5",
+                "display": "American Indian or Alaska Native"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "urn:oid:2.16.840.1.113883.6.238",
+                "code": "2028-9",
+                "display": "Asian"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "urn:oid:2.16.840.1.113883.6.238",
+                "code": "2054-5",
+                "display": "Black or African American"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "urn:oid:2.16.840.1.113883.6.238",
+                "code": "2076-8",
+                "display": "Native Hawaiian or Other Pacific Islander"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "urn:oid:2.16.840.1.113883.6.238",
+                "code": "2106-3",
+                "display": "White"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "ASKU",
+                "display": "Asked but unknown"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "UNK",
+                "display": "Unknown"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.extension.where(url = 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-race').extension.where(url = 'ombCategory').value"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "ethnicity",
+          "text": "Ethnicity",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "urn:oid:2.16.840.1.113883.6.238",
+                "code": "2135-2",
+                "display": "Hispanic or Latino"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "urn:oid:2.16.840.1.113883.6.238",
+                "code": "2186-5",
+                "display": "Not Hispanic or Latino"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "ASKU",
+                "display": "Asked but unknown"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "UNK",
+                "display": "Unknown"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%patient.extension.where(url = 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity').extension.where(url = 'ombCategory').value.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "gender-identity",
+          "text": "Gender Identity",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "446141000124107",
+                "display": "Female gender identity"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "446151000124109",
+                "display": "Male gender identity"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "33791000087105",
+                "display": "Non-binary gender identity"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "OTH",
+                "display": "Other"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                "code": "asked-declined",
+                "display": "Prefer not to say"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "UNK",
+                "display": "Unknown"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "(%patient.extension.where(url = 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity').value.coding | %patient.extension.where(url = 'http://hl7.org/fhir/StructureDefinition/individual-genderIdentity').extension.where(url = 'value').value.coding).first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "sexual-orientation",
+          "text": "Sexual Orientation",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "20430005",
+                "display": "Heterosexual"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "38628009",
+                "display": "Homosexual"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "42035005",
+                "display": "Bisexual"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "OTH",
+                "display": "Other"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "ASKU",
+                "display": "Prefer not to say"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                "code": "UNK",
+                "display": "Unknown"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%sexualOrientation.entry.resource.ofType(Observation).value.coding.first()"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "emergency-contact",
+      "text": "Emergency Contact",
+      "type": "group",
+      "repeats": true,
+      "item": [
+        {
+          "linkId": "emergency-contact-first-name",
+          "text": "First Name",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%contact.name.first().given.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "emergency-contact-middle-name",
+          "text": "Middle Name",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%contact.name.first().given.skip(1).first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "emergency-contact-last-name",
+          "text": "Last Name",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%contact.name.first().family"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "emergency-contact-phone",
+          "text": "Phone",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%contact.telecom.where(system = 'phone').first().value"
+              }
+            }
+          ]
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemPopulationContext",
+          "valueExpression": {
+            "name": "contact",
+            "language": "text/fhirpath",
+            "expression": "%patient.contact.where(relationship.coding.where(system = 'http://terminology.hl7.org/CodeSystem/v2-0131' and code = 'C').exists()) | %relatedPersons.entry.resource.ofType(RelatedPerson).where(relationship.coding.where(system = 'http://terminology.hl7.org/CodeSystem/v2-0131' and code = 'C').exists())"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "allergies",
+      "text": "Allergies",
+      "type": "group",
+      "repeats": true,
+      "item": [
+        {
+          "linkId": "allergy-substance",
+          "text": "Substance",
+          "type": "open-choice",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%allergy.code.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "allergy-reaction",
+          "text": "Reaction",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%allergy.reaction.manifestation.coding.display.distinct().join(', ')"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "allergy-onset",
+          "text": "Onset",
+          "type": "date",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%allergy.onset.ofType(dateTime).toString().substring(0, 10).toDate()"
+              }
+            }
+          ]
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemPopulationContext",
+          "valueExpression": {
+            "name": "allergy",
+            "language": "text/fhirpath",
+            "expression": "%allergies.entry.resource.ofType(AllergyIntolerance)"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "medications",
+      "text": "Current medications",
+      "type": "group",
+      "repeats": true,
+      "item": [
+        {
+          "linkId": "medication-code",
+          "text": "Medication Name",
+          "type": "open-choice",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%medication.medication.ofType(CodeableConcept).coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "medication-note",
+          "text": "Note",
+          "type": "string",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%medication.dosageInstruction.text.first() | %medication.dosage.text.first()"
+              }
+            }
+          ]
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemPopulationContext",
+          "valueExpression": {
+            "name": "medication",
+            "language": "text/fhirpath",
+            "expression": "%medicationRequests.entry.resource.ofType(MedicationRequest) | %medicationStatements.entry.resource.ofType(MedicationStatement)"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "medical-history",
+      "text": "Medical History",
+      "type": "group",
+      "repeats": true,
+      "item": [
+        {
+          "linkId": "medical-history-problem",
+          "text": "Problem",
+          "type": "open-choice",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%condition.code.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "medical-history-clinical-status",
+          "text": "Status",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "active",
+                "display": "Active"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "recurrence",
+                "display": "Recurrence"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "relapse",
+                "display": "Relapse"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "inactive",
+                "display": "Inactive"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "remission",
+                "display": "Remission"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "resolved",
+                "display": "Resolved"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%condition.clinicalStatus.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "medical-history-onset",
+          "text": "Onset",
+          "type": "date",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%condition.onset.ofType(dateTime).toString().substring(0, 10).toDate()"
+              }
+            }
+          ]
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemPopulationContext",
+          "valueExpression": {
+            "name": "condition",
+            "language": "text/fhirpath",
+            "expression": "%conditions.entry.resource.ofType(Condition)"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "family-member-history",
+      "text": "Family Member History",
+      "type": "group",
+      "repeats": true,
+      "item": [
+        {
+          "linkId": "family-member-history-problem",
+          "text": "Problem",
+          "type": "open-choice",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%relative.condition.code.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "family-member-history-relationship",
+          "text": "Relationship",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "MTH",
+                "display": "Mother"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "FTH",
+                "display": "Father"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "PRN",
+                "display": "Parent"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "SIS",
+                "display": "Sister"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "BRO",
+                "display": "Brother"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "SIB",
+                "display": "Sibling"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "DAU",
+                "display": "Daughter"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "SON",
+                "display": "Son"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "CHILD",
+                "display": "Child"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "GRMTH",
+                "display": "Grandmother"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "GRFTH",
+                "display": "Grandfather"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "AUNT",
+                "display": "Aunt"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "UNCLE",
+                "display": "Uncle"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "COUSN",
+                "display": "Cousin"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "FAMMEMB",
+                "display": "Other family member"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%relative.relationship.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "family-member-history-deceased",
+          "text": "Deceased",
+          "type": "boolean",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%relative.deceased.ofType(boolean)"
+              }
+            }
+          ]
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemPopulationContext",
+          "valueExpression": {
+            "name": "relative",
+            "language": "text/fhirpath",
+            "expression": "%familyHistory.entry.resource.ofType(FamilyMemberHistory)"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "vaccination-history",
+      "text": "Vaccination History",
+      "type": "group",
+      "repeats": true,
+      "item": [
+        {
+          "linkId": "immunization-vaccine",
+          "text": "Vaccine",
+          "type": "open-choice",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%immunization.vaccineCode.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "immunization-date",
+          "text": "Administration Date",
+          "type": "date",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%immunization.occurrence.ofType(dateTime).toString().substring(0, 10).toDate()"
+              }
+            }
+          ]
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemPopulationContext",
+          "valueExpression": {
+            "name": "immunization",
+            "language": "text/fhirpath",
+            "expression": "%immunizations.entry.resource.ofType(Immunization)"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "preferred-pharmacy",
+      "text": "Preferred Pharmacy",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "preferred-pharmacy-reference",
+          "text": "Pharmacy name and location",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "linkId": "coverage-information",
+      "text": "Coverage Information",
+      "type": "group",
+      "repeats": true,
+      "item": [
+        {
+          "linkId": "insurance-provider",
+          "text": "Insurance company",
+          "type": "string",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "(%coverage.payor.display | %coverages.entry.resource.ofType(Organization).where(('Organization/' + id) in %coverage.payor.reference).name).first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "subscriber-id",
+          "text": "Subscriber ID",
+          "type": "string",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%coverage.subscriberId"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "relationship-to-subscriber",
+          "text": "Relationship to Subscriber",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "self",
+                "display": "Self"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "spouse",
+                "display": "Spouse"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "common",
+                "display": "Common Law Spouse"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "child",
+                "display": "Child"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "parent",
+                "display": "Parent"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "injured",
+                "display": "Injured Party"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "other",
+                "display": "Other"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%coverage.relationship.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "related-person",
+          "text": "Subscriber Information",
+          "type": "group",
+          "enableBehavior": "all",
+          "enableWhen": [
+            {
+              "question": "relationship-to-subscriber",
+              "operator": "!=",
+              "answerCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "other",
+                "display": "Other"
+              }
+            },
+            {
+              "question": "relationship-to-subscriber",
+              "operator": "!=",
+              "answerCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "self",
+                "display": "Self"
+              }
+            },
+            {
+              "question": "relationship-to-subscriber",
+              "operator": "!=",
+              "answerCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "injured",
+                "display": "Injured Party"
+              }
+            }
+          ],
+          "item": [
+            {
+              "linkId": "related-person-first-name",
+              "text": "First Name",
+              "type": "string"
+            },
+            {
+              "linkId": "related-person-middle-name",
+              "text": "Middle Name",
+              "type": "string"
+            },
+            {
+              "linkId": "related-person-last-name",
+              "text": "Last Name",
+              "type": "string"
+            },
+            {
+              "linkId": "related-person-dob",
+              "text": "Date of Birth",
+              "type": "date"
+            },
+            {
+              "linkId": "related-person-gender-identity",
+              "text": "Gender Identity",
+              "type": "choice",
+              "answerOption": [
+                {
+                  "valueCoding": {
+                    "system": "http://snomed.info/sct",
+                    "code": "446141000124107",
+                    "display": "Female gender identity"
+                  }
+                },
+                {
+                  "valueCoding": {
+                    "system": "http://snomed.info/sct",
+                    "code": "446151000124109",
+                    "display": "Male gender identity"
+                  }
+                },
+                {
+                  "valueCoding": {
+                    "system": "http://snomed.info/sct",
+                    "code": "33791000087105",
+                    "display": "Non-binary gender identity"
+                  }
+                },
+                {
+                  "valueCoding": {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                    "code": "OTH",
+                    "display": "Other"
+                  }
+                },
+                {
+                  "valueCoding": {
+                    "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                    "code": "asked-declined",
+                    "display": "Prefer not to say"
+                  }
+                },
+                {
+                  "valueCoding": {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                    "code": "UNK",
+                    "display": "Unknown"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemPopulationContext",
+          "valueExpression": {
+            "name": "coverage",
+            "language": "text/fhirpath",
+            "expression": "%coverages.entry.resource.ofType(Coverage)"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "social-determinants-of-health",
+      "text": "Social Determinants of Health",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "housing-status",
+          "text": "Housing Status",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "H",
+                "display": "Independent household"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "R",
+                "display": "Retirement community"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "SL",
+                "display": "Supported living"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "G",
+                "display": "Group home"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "N",
+                "display": "Nursing home"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "X",
+                "display": "Extended care facility"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "CS",
+                "display": "Community shelter"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "T",
+                "display": "Transient"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-LivingArrangement",
+                "code": "HL",
+                "display": "Homeless"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "education-level",
+          "text": "Education Level",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "ELEM",
+                "display": "Elementary school"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "SEC",
+                "display": "Some secondary or high school"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "HS",
+                "display": "High school or secondary school degree"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "SCOL",
+                "display": "Some college"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "ASSOC",
+                "display": "Associate's or technical degree"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "BD",
+                "display": "College or baccalaureate degree"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "PB",
+                "display": "Some post-baccalaureate education"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "GD",
+                "display": "Graduate or professional degree"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-EducationLevel",
+                "code": "POSTG",
+                "display": "Doctoral or post graduate education"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "smoking-status",
+          "text": "Smoking Status",
+          "type": "choice",
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "449868002",
+                "display": "Smokes tobacco daily"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "428041000124106",
+                "display": "Occasional tobacco smoker"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "77176002",
+                "display": "Smoker"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "8517006",
+                "display": "Ex-smoker"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "266919005",
+                "display": "Never smoked tobacco"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "266927001",
+                "display": "Tobacco smoking consumption unknown"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%smoking.entry.resource.ofType(Observation).value.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "veteran-status",
+          "text": "Veteran Status",
+          "type": "boolean"
+        },
+        {
+          "linkId": "pregnancy-status",
+          "text": "Pregnancy Status",
+          "type": "choice",
+          "code": [
+            {
+              "code": "82810-3",
+              "display": "Pregnancy status",
+              "system": "http://loinc.org"
+            }
+          ],
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "77386006",
+                "display": "Pregnant"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "60001007",
+                "display": "Not pregnant"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "261665006",
+                "display": "Unknown"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%pregnancy.entry.resource.ofType(Observation).value.coding.first()"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "estimated-delivery-date",
+          "text": "Estimated Delivery Date",
+          "type": "date",
+          "code": [
+            {
+              "code": "11778-8",
+              "display": "Estimated date of delivery",
+              "system": "http://loinc.org"
+            }
+          ],
+          "enableWhen": [
+            {
+              "question": "pregnancy-status",
+              "operator": "=",
+              "answerCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "77386006",
+                "display": "Pregnancy"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "languages-spoken",
+      "text": "Languages Spoken",
+      "type": "open-choice",
+      "repeats": true,
+      "answerOption": [
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "en",
+            "display": "English"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "es",
+            "display": "Spanish"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "zh",
+            "display": "Chinese"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "vi",
+            "display": "Vietnamese"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "tl",
+            "display": "Tagalog"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ar",
+            "display": "Arabic"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "fr",
+            "display": "French"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ht",
+            "display": "Haitian Creole"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ko",
+            "display": "Korean"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ru",
+            "display": "Russian"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "pt",
+            "display": "Portuguese"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "de",
+            "display": "German"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "hi",
+            "display": "Hindi"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "pl",
+            "display": "Polish"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "it",
+            "display": "Italian"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ja",
+            "display": "Japanese"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "fa",
+            "display": "Persian"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ur",
+            "display": "Urdu"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "bn",
+            "display": "Bengali"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "so",
+            "display": "Somali"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "uk",
+            "display": "Ukrainian"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "sgn",
+            "display": "Sign language"
+          }
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+          "valueExpression": {
+            "language": "text/fhirpath",
+            "expression": "%patient.communication.language.coding"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "preferred-language",
+      "text": "Preferred Language",
+      "type": "open-choice",
+      "answerOption": [
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "en",
+            "display": "English"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "es",
+            "display": "Spanish"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "zh",
+            "display": "Chinese"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "vi",
+            "display": "Vietnamese"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "tl",
+            "display": "Tagalog"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ar",
+            "display": "Arabic"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "fr",
+            "display": "French"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ht",
+            "display": "Haitian Creole"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ko",
+            "display": "Korean"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ru",
+            "display": "Russian"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "pt",
+            "display": "Portuguese"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "de",
+            "display": "German"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "hi",
+            "display": "Hindi"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "pl",
+            "display": "Polish"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "it",
+            "display": "Italian"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ja",
+            "display": "Japanese"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "fa",
+            "display": "Persian"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "ur",
+            "display": "Urdu"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "bn",
+            "display": "Bengali"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "so",
+            "display": "Somali"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "uk",
+            "display": "Ukrainian"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "urn:ietf:bcp:47",
+            "code": "sgn",
+            "display": "Sign language"
+          }
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+          "valueExpression": {
+            "language": "text/fhirpath",
+            "expression": "%patient.communication.where(preferred = true).language.coding.first()"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "consent-for-treatment",
+      "text": "Consent for Treatment",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "consent-for-treatment-signature",
+          "text": "I the undersigned patient (or authorized representative, or parent/guardian), consent to and authorize the performance of any treatments, examinations, medical services, surgical or diagnostic procedures, including lab and radiographic studies, as ordered by this office and it’s healthcare providers.",
+          "type": "boolean"
+        },
+        {
+          "linkId": "consent-for-treatment-date",
+          "text": "Date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "linkId": "agreement-to-pay-for-treatment",
+      "text": "Agreement to Pay for Treatment",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "agreement-to-pay-for-treatment-help",
+          "text": "I, the responsible party, hereby agree to pay all the charges submitted by this office during the course of treatment for the patient. If the patient has insurance coverage with a managed care organization, with which this office has a contractual agreement, I agree to pay all applicable co‐payments, co‐insurance and deductibles, which arise during the course of treatment for the patient. The responsible party also agrees to pay for treatment rendered to the patient, which is not considered to be a covered service by my insurer and/or a third party insurer or other payor. I understand that [Practice Name] provides charges on a sliding fee; based on family size and household annual income, and that services will not be refused due to inability to pay at the time of the visit.",
+          "type": "boolean"
+        },
+        {
+          "linkId": "agreement-to-pay-for-treatment-date",
+          "text": "Date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "linkId": "notice-of-privacy-practices",
+      "text": "Notice of Privacy Practices",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "notice-of-privacy-practices-help",
+          "text": "[Practice Name] Notice of Privacy Practices gives information about how [Practice Name] may use and release protected health information (PHI) about you. I understand that:\n- I have the right to receive a copy of [Practice Name]’s Notice of Privacy Practices.\n- I may request a copy at any time.\n- [Practice Name]‘s Notice of Privacy Practices may be revised.",
+          "type": "display"
+        },
+        {
+          "linkId": "notice-of-privacy-practices-signature",
+          "text": "I acknowledge the above and that I have received a copy of [Practice Name]’s Notice of Privacy Practices.",
+          "type": "boolean"
+        },
+        {
+          "linkId": "notice-of-privacy-practices-date",
+          "text": "Date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "linkId": "acknowledgement-for-advance-directives",
+      "text": "Acknowledgement for Advance Directives",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "acknowledgement-for-advance-directives-help",
+          "text": "An Advance Medical Directive is a document by which a person makes provision for health care decisions in the event that, in the future, he/she becomes unable to make those decisions.",
+          "type": "display"
+        },
+        {
+          "linkId": "acknowledgement-for-advance-directives-signature",
+          "text": "I acknowledge I have received information about Advance Directives.",
+          "type": "boolean"
+        },
+        {
+          "linkId": "acknowledgement-for-advance-directives-date",
+          "text": "Date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "linkId": "patient-contact-preference",
+      "text": "Contact Preferences",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "patient-contact-preference-email",
+          "text": "Ok to send email appointment reminders",
+          "type": "boolean"
+        },
+        {
+          "linkId": "patient-contact-preference-call-or-text",
+          "text": "Ok to call/text",
+          "type": "boolean"
+        },
+        {
+          "linkId": "patient-contact-preference-voice-text-appointment-reminders",
+          "text": "Ok to send voice/text messages",
+          "type": "boolean"
+        },
+        {
+          "linkId": "patient-contact-preference-preferred-method-for-phone-reminders",
+          "text": "Preferred method for phone reminders",
+          "type": "choice",
+          "repeats": false,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/contact-point-system",
+                "code": "sms",
+                "display": "Text message"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/contact-point-system",
+                "code": "phone",
+                "display": "Phone call"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/questionnaire-item-control",
+                    "code": "radio-button"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
