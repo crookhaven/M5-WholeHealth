@@ -5,6 +5,7 @@ import { buildResponse, declineAll, describeResource, patientEntry, prepareItems
 import { missingRequired } from '../lib/checkin/forms'
 import { asForm, formFromPrefill, pendingReview, responseItems, wantsPrefill } from '../lib/checkin/formState'
 import CheckinForm from './CheckinForm'
+import { displayOrder } from '../lib/checkin/order'
 import { CHECKIN_TEST_PATIENT, bundleToRecords, fetchFromGitHub } from '../lib/openSyntheticPatients'
 
 // M5 as a SMART Health Check-in web wallet: a check-in page opens M5 with
@@ -30,6 +31,30 @@ function describeSources(refs) {
   return words.join(' and ')
 }
 
+// The heading of the form section a review unit sits in: "Allergies".
+function sectionTitle(questionnaire, unit) {
+  const linkId = unit.startsWith('top:') ? unit.slice(4) : unit.replace(/#\d+\/$/, '').split('/').pop().replace(/#\d+$/, '')
+  const walk = (items = []) => {
+    for (const i of items) {
+      if (i.linkId === linkId) return i.text ?? linkId
+      const found = walk(i.item)
+      if (found) return found
+    }
+    return null
+  }
+  return walk(questionnaire.item) ?? linkId
+}
+
+function feedsNote(uses) {
+  return [...uses]
+    .map(([title, sections]) => {
+      const list = [...sections]
+      const names = list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0]
+      return `These records filled in the ${names} ${list.length > 1 ? 'sections' : 'section'} of "${title}" above.`
+    })
+    .join(' ')
+}
+
 const typeId = (r) => (r?.resourceType && r.id ? `${r.resourceType}/${r.id}` : null)
 
 // The records shared in other items that a form entry came from, as
@@ -44,7 +69,7 @@ function recordsFor(prepared, refs) {
   return out
 }
 
-function ItemCard({ p, shared, onShare, form, onForm, skipped, notes = new Map(), left = new Set(), onLeave }) {
+function ItemCard({ p, shared, onShare, form, onForm, skipped, notes = new Map(), feeds = null, left = new Set(), onLeave }) {
   const { item } = p
   const matches = p.kind === 'selection' ? p.records : []
   const kept = matches.filter((e) => !left.has(e.fullUrl)).length
@@ -63,6 +88,7 @@ function ItemCard({ p, shared, onShare, form, onForm, skipped, notes = new Map()
       {p.kind === 'selection' && matches.length === 0 && (
         <p className="section-help">Nothing in this person&apos;s records matches, so M5 will say none is available.</p>
       )}
+      {p.kind === 'selection' && feeds && <p className="section-help">{feeds}</p>}
       {p.kind === 'selection' && matches.some((e) => notes.has(e.fullUrl)) && (
         <p className="checkin-note">
           You changed or removed {matches.filter((e) => notes.has(e.fullUrl)).length} of these in a form. Open the list to see which.
@@ -250,6 +276,22 @@ export default function CheckinWallet() {
     }
   }
 
+  // Records items that filled in a form: { itemId: Map(formTitle -> Set(section)) }.
+  const feeds = {}
+  const prefilledForms = new Set()
+  for (const p of prepared ?? []) {
+    if (p.kind !== 'form') continue
+    const form = answerFor(p.item.id)
+    if (form.review.size) prefilledForms.add(p.item.id)
+    for (const [unit, refs] of form.sources) {
+      for (const target of Object.keys(recordsFor(prepared, refs))) {
+        const uses = (feeds[target] ??= new Map())
+        if (!uses.has(p.item.title)) uses.set(p.item.title, new Set())
+        uses.get(p.item.title).add(sectionTitle(p.questionnaire, unit))
+      }
+    }
+  }
+
   // Notes beside shared records that the patient changed or removed in a form.
   const notes = new Map()
   for (const p of prepared ?? []) {
@@ -348,7 +390,7 @@ export default function CheckinWallet() {
       {!prepared ? (
         <p className="import-message">Looking through the records…</p>
       ) : (
-        prepared.map((p) => (
+        displayOrder(prepared, prefilledForms).map((p) => (
           <ItemCard
             key={p.item.id}
             p={p}
@@ -358,6 +400,7 @@ export default function CheckinWallet() {
             onForm={(next) => setForm(p.item.id, next)}
             skipped={skipped[p.item.id] ?? 0}
             notes={notes}
+            feeds={feeds[p.item.id] ? feedsNote(feeds[p.item.id]) : null}
             left={leftOut[p.item.id]}
             onLeave={(fullUrl, leave) => {
               const next = new Set(leftOut[p.item.id] ?? [])

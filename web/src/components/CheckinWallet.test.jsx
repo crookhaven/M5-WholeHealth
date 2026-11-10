@@ -114,6 +114,10 @@ describe('CheckinWallet', () => {
     expect(screen.getByDisplayValue('Maximus')).toBeInTheDocument()
     expect(screen.getByDisplayValue('penicillin G')).toBeInTheDocument()
     expect(screen.getAllByText('From your allergy list')).toHaveLength(4)
+    // The intake comes first, then the records it was filled in from
+    const headings = screen.getAllByRole('checkbox', { name: /^(Allergies|Patient intake)$/ }).map((c) => c.getAttribute('aria-label') ?? c.closest('label').textContent)
+    expect(headings[0]).toMatch(/Patient intake/)
+    expect(screen.getByText('These records filled in the Allergies section of "Patient intake" above.')).toBeInTheDocument()
 
     // Not sent until it's checked
     await user.click(screen.getByRole('button', { name: "Share what's ticked" }))
