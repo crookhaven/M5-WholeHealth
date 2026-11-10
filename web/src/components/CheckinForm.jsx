@@ -3,7 +3,6 @@ import {
   confirmAll,
   instancePrefix,
   isEnabledAt,
-  pendingReview,
   removeEntry,
   setAnswer,
   setReview,
@@ -65,7 +64,6 @@ function ChoiceQuestion({ item, given, set, id, label }) {
           {item.required && <span className="q-req"> (needed)</span>}
         </span>
         <input id={id} type="text" value={answerLabel(current)} onChange={(e) => set(e.target.value === '' ? [] : [{ valueString: e.target.value }])} />
-        {current?.valueCoding && <span className="q-coded">As coded in your record</span>}
       </label>
     )
   }
@@ -179,18 +177,20 @@ function ReviewBar({ unit, ctx, onRemove, what }) {
   return (
     <div className={`q-review q-review-${status}`}>
       <span className="q-from">
-        {from ? `From your ${from}` : 'Filled in from your records'}
-        {edited && ' · you changed this'}
+        {from ? `From your ${from}` : 'From your records'}
+        {edited && <span className="q-edited">You changed this</span>}
       </span>
       {status === 'confirmed' ? (
-        <span className="q-checked">✓ Checked</span>
+        <span className="q-checked" role="status">
+          ✓ Looks right
+        </span>
       ) : (
-        <button type="button" onClick={() => ctx.onForm(setReview(ctx.form, unit, 'confirmed'))} aria-label={`${what} is right`}>
-          This is right
+        <button type="button" className="q-ok" onClick={() => ctx.onForm(setReview(ctx.form, unit, 'confirmed'))} aria-label={`${what} looks right`}>
+          Looks right
         </button>
       )}
       {onRemove && (
-        <button type="button" onClick={onRemove} aria-label={`Remove ${what}`}>
+        <button type="button" className="q-remove" onClick={onRemove} aria-label={`Remove ${what}`}>
           Remove
         </button>
       )}
@@ -219,13 +219,13 @@ function RepeatingGroup({ item, prefix, ctx }) {
   const pending = entries.map((e) => e.p).filter((p) => ctx.form.review.get(p) === 'pending')
   return (
     <fieldset className="q-group q-repeating">
-      <legend>{item.text}</legend>
-      {pending.length > 1 && (
+      {ctx.section ? <legend className="sr-only">{item.text}</legend> : <legend>{item.text}</legend>}
+      {!ctx.section && pending.length > 1 && (
         <button type="button" className="q-all" onClick={() => ctx.onForm(confirmAll(ctx.form, pending))}>
           All {pending.length} below are right
         </button>
       )}
-      {entries.length === 0 && <p className="section-help">None listed.</p>}
+      {entries.length === 0 && <p className="section-help">Nothing listed yet.</p>}
       {entries.map(({ id, p }, n) => {
         const summary = firstAnswer(item.item, p, ctx.form) || `${item.text} ${n + 1}`
         const what = `${item.text}: ${summary}`
@@ -257,8 +257,8 @@ function RepeatingGroup({ item, prefix, ctx }) {
           </div>
         )
       })}
-      <button type="button" className="q-add" onClick={() => ctx.onForm(addEntry(ctx.form, groupKey))}>
-        Add to {item.text}
+      <button type="button" className="q-add" onClick={() => ctx.onForm(addEntry(ctx.form, groupKey))} aria-label={`Add to ${item.text}`}>
+        + Add another
       </button>
     </fieldset>
   )
@@ -290,20 +290,23 @@ function Items({ items = [], prefix, ctx, top = false }) {
     .map((i) => <Item key={prefix + i.linkId} item={i} prefix={prefix} ctx={ctx} top={top} />)
 }
 
-export default function CheckinForm({ questionnaire, form, onForm, idPrefix, describeSources, skipped = 0 }) {
-  const ctx = { questionnaire, form, onForm, idPrefix, describeSources }
-  const left = pendingReview(form).length
-  const prefilled = form.review.size > 0
+// One section of a form (a top-level item), for the step-by-step screen. The
+// step's own button marks the section's filled-in parts as right, so only
+// entries (an allergy, a plan) get their own Looks right / Remove.
+function Section({ item, ctx }) {
+  if (item.type === 'group' && item.repeats) return <RepeatingGroup item={item} prefix="" ctx={ctx} />
+  if (item.type === 'group') return <Items items={item.item} prefix="" ctx={ctx} />
+  return <Question item={item} prefix="" ctx={ctx} />
+}
+
+export default function CheckinForm({ questionnaire, form, onForm, idPrefix, describeSources, section = null }) {
+  const ctx = { questionnaire, form, onForm, idPrefix, describeSources, section: !!section }
+  if (section) {
+    const item = questionnaire.item.find((i) => i.linkId === section)
+    return <div className="checkin-form">{item && <Section item={item} ctx={ctx} />}</div>
+  }
   return (
     <div className="checkin-form">
-      {prefilled && (
-        <p className={left ? 'q-intro' : 'q-intro q-intro-done'}>
-          {left
-            ? `M5 filled in what it could from your records. Check each part, fix anything that's wrong, and remove anything that's no longer true. ${left} left to check.`
-            : 'Everything M5 filled in has been checked.'}
-          {skipped > 0 && ` ${skipped} ${skipped === 1 ? 'answer' : 'answers'} from your records didn't match this form's choices and were left blank.`}
-        </p>
-      )}
       <Items items={questionnaire.item} prefix="" ctx={ctx} top />
     </div>
   )

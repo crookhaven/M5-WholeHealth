@@ -1,10 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import '@fontsource/atkinson-hyperlegible/400.css'
+import '@fontsource/atkinson-hyperlegible/700.css'
 import { useWorkspace } from '../state/WorkspaceContext'
 import { walletSession } from '../lib/checkin/session'
-import { buildResponse, declineAll, describeResource, patientEntry, prepareItems, walletEntries } from '../lib/checkin/respond'
+import { buildResponse, declineAll, patientEntry, prepareItems, walletEntries } from '../lib/checkin/respond'
 import { missingRequired } from '../lib/checkin/forms'
-import { asForm, formFromPrefill, pendingReview, responseItems, wantsPrefill } from '../lib/checkin/formState'
+import { asForm, confirmAll, formFromPrefill, isEnabledAt, pendingReview, responseItems, wantsPrefill } from '../lib/checkin/formState'
 import CheckinForm from './CheckinForm'
+import { Progress, RecordsStep, ReviewScreen, ShareSwitch, StartScreen } from './CheckinSteps'
 import { displayOrder } from '../lib/checkin/order'
 import { CHECKIN_TEST_PATIENT, bundleToRecords, fetchFromGitHub } from '../lib/openSyntheticPatients'
 
@@ -50,7 +53,7 @@ function feedsNote(uses) {
     .map(([title, sections]) => {
       const list = [...sections]
       const names = list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0]
-      return `These records filled in the ${names} ${list.length > 1 ? 'sections' : 'section'} of "${title}" above.`
+      return `These also filled in the ${names} ${list.length > 1 ? 'parts' : 'part'} of your "${title}" form.`
     })
     .join(' ')
 }
@@ -69,71 +72,6 @@ function recordsFor(prepared, refs) {
   return out
 }
 
-function ItemCard({ p, shared, onShare, form, onForm, skipped, notes = new Map(), feeds = null, left = new Set(), onLeave }) {
-  const { item } = p
-  const matches = p.kind === 'selection' ? p.records : []
-  const kept = matches.filter((e) => !left.has(e.fullUrl)).length
-  const shareable = p.kind === 'form' || matches.length > 0
-  return (
-    <section className={`checkin-item${shareable ? '' : ' checkin-item-none'}`}>
-      <label className="checkin-item-head">
-        <input type="checkbox" checked={shareable && shared} disabled={!shareable} onChange={(e) => onShare(e.target.checked)} />
-        <span>
-          <strong>{item.title}</strong>
-          {item.required && <span className="checkin-needed"> · the website says it needs this</span>}
-          {item.summary && <span className="checkin-summary">{item.summary}</span>}
-        </span>
-      </label>
-      {p.kind === 'unsupported' && <p className="section-help">M5 can&apos;t answer this: {p.reason}</p>}
-      {p.kind === 'selection' && matches.length === 0 && (
-        <p className="section-help">Nothing in this person&apos;s records matches, so M5 will say none is available.</p>
-      )}
-      {p.kind === 'selection' && feeds && <p className="section-help">{feeds}</p>}
-      {p.kind === 'selection' && matches.some((e) => notes.has(e.fullUrl)) && (
-        <p className="checkin-note">
-          You changed or removed {matches.filter((e) => notes.has(e.fullUrl)).length} of these in a form. Open the list to see which.
-        </p>
-      )}
-      {p.kind === 'selection' && matches.length > 0 && (
-        <details>
-          <summary>
-            {shared && kept < matches.length
-              ? `${kept} of ${matches.length} records ticked`
-              : `${matches.length} ${matches.length === 1 ? 'record' : 'records'}`}
-            {shared && matches.length > 1 && ' (open to choose which)'}
-          </summary>
-          <ul className="checkin-records">
-            {matches.map((e) => (
-              <li key={e.fullUrl}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={shared && !left.has(e.fullUrl)}
-                    disabled={!shared}
-                    onChange={(ev) => onLeave(e.fullUrl, !ev.target.checked)}
-                  />
-                  {describeResource(e.resource)} <span className="record-source">({e.resource.resourceType})</span>
-                </label>
-                {notes.get(e.fullUrl) && <span className="checkin-note">{notes.get(e.fullUrl)}</span>}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-      {p.kind === 'form' && shared && (
-        <CheckinForm
-          questionnaire={p.questionnaire}
-          form={form}
-          onForm={onForm}
-          idPrefix={`q-${item.id}`}
-          describeSources={describeSources}
-          skipped={skipped}
-        />
-      )}
-    </section>
-  )
-}
-
 export default function CheckinWallet() {
   const session = useSyncExternalStore(walletSession.subscribe, walletSession.get)
   const { patients, activeId, allData, logActivity, addPatient, renamePatient, addRecords, addClaims, sourceRecords } = useWorkspace()
@@ -150,6 +88,8 @@ export default function CheckinWallet() {
   const [skipped, setSkipped] = useState({})
   const [problem, setProblem] = useState(null)
   const [loading, setLoading] = useState(false)
+  // Which screen: 0 is the start, then one per step, then the last look.
+  const [step, setStep] = useState(0)
   const context = session.status === 'request' ? session.context : null
   const resources = allData[patientId]?.fhirResources
 
@@ -207,6 +147,7 @@ export default function CheckinWallet() {
       setSkipped(blank)
       setLeftOut({})
       setAutoLeft({})
+      setStep(0)
     })
     return () => {
       live = false
@@ -305,32 +246,31 @@ export default function CheckinWallet() {
           notes.set(
             url,
             removed
-              ? `You removed this in "${p.item.title}", so it's unticked.`
-              : `You corrected this in "${p.item.title}". The record itself is shared as it is unless you untick it.`,
+              ? `You removed this in your "${p.item.title}" form, so it's unticked.`
+              : `You changed this in your "${p.item.title}" form. If you share this record, it goes as it is.`,
           )
         }
       }
     }
   }
 
+  // What still needs the patient before a shared form can go, in plain words.
+  function issueFor(p) {
+    if (p.kind !== 'form' || !choices[p.item.id]) return null
+    const form = answerFor(p.item.id)
+    if (responseItems(p.questionnaire, form).length === 0) return 'No answers yet.'
+    const unchecked = pendingReview(form).length
+    if (unchecked) return `${unchecked} ${unchecked === 1 ? 'part' : 'parts'} still to check.`
+    const missing = missingRequired(p.questionnaire, form)
+    if (missing.length) return `Needs an answer: "${missing[0]}".`
+    return null
+  }
+
   function send() {
-    for (const p of prepared) {
-      if (p.kind !== 'form' || !choices[p.item.id]) continue
-      const form = answerFor(p.item.id)
-      if (responseItems(p.questionnaire, form).length === 0) {
-        setProblem(`Answer the questions in "${p.item.title}", or untick it to leave it out.`)
-        return
-      }
-      const unchecked = pendingReview(form).length
-      if (unchecked) {
-        setProblem(`Check what M5 filled in from your records in "${p.item.title}" (${unchecked} left), or untick it to leave it out.`)
-        return
-      }
-      const missing = missingRequired(p.questionnaire, form)
-      if (missing.length) {
-        setProblem(`Answer "${missing[0]}" in ${p.item.title}, or untick it to leave it out.`)
-        return
-      }
+    const blocked = prepared.find((p) => issueFor(p))
+    if (blocked) {
+      setProblem(`"${blocked.item.title}": ${issueFor(blocked)}`)
+      return
     }
     const allAnswers = Object.fromEntries(prepared.map((p) => [p.item.id, answerFor(p.item.id)]))
     const response = buildResponse({ request, prepared, choices, answers: allAnswers, patientRef: patientRes?.fullUrl, leftOut })
@@ -349,21 +289,80 @@ export default function CheckinWallet() {
     session.reply({ response: declineAll(request) })
   }
 
-  return (
-    <div className="checkin-wallet">
-      <section className="checkin-who">
-        <p>A website is asking for your health information:</p>
-        <p className="checkin-origin">{origin}</p>
-        {request.purpose && <p>It says the reason is: {request.purpose}</p>}
-        <p className="section-help">
-          M5 only knows the website&apos;s address, not who runs it. Share only if you expect this request. What you share goes
-          to that address only, encrypted for it.
-        </p>
-      </section>
+  const ordered = prepared ? displayOrder(prepared, prefilledForms) : []
 
+  // The steps: a long form filled in from records goes one part (top-level
+  // section) at a time; everything else is one step.
+  const steps = [{ kind: 'start' }]
+  for (const p of ordered) {
+    const form = answerFor(p.item.id)
+    if (p.kind === 'form' && choices[p.item.id] && prefilledForms.has(p.item.id)) {
+      const parts = p.questionnaire.item.filter((i) => i.type !== 'display' && isEnabledAt(i, form, ''))
+      parts.forEach((section, n) => steps.push({ kind: 'section', p, section, n: n + 1, of: parts.length }))
+    } else {
+      steps.push({ kind: 'item', p })
+    }
+  }
+  steps.push({ kind: 'review' })
+  const at = Math.min(step, steps.length - 1)
+  const current = steps[at]
+
+  function go(n) {
+    setProblem(null)
+    setStep(Math.max(0, Math.min(n, steps.length - 1)))
+    if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0 })
+  }
+  const jump = (id) => go(id === 'review' ? steps.length - 1 : steps.findIndex((s) => s.p?.item.id === id))
+
+  // The review units of one form section: its own and its entries'.
+  const unitsIn = (form, linkId) => [...form.review.keys()].filter((u) => u === `top:${linkId}` || u.startsWith(`${linkId}#`))
+
+  function summary(p) {
+    const shared = !!choices[p.item.id]
+    const base = { id: p.item.id, title: p.item.title, shared: shared && p.kind !== 'unsupported' }
+    if (p.kind === 'unsupported') return { ...base, detail: "M5 can't send this. The website will be told." }
+    if (!shared) return { ...base, detail: "You chose not to share this." }
+    if (p.kind === 'selection') {
+      const n = p.records.length
+      if (n === 0) return { ...base, shared: false, detail: 'Nothing matched. The website will be told.' }
+      const kept = p.records.filter((e) => !(leftOut[p.item.id] ?? new Set()).has(e.fullUrl)).length
+      return { ...base, detail: `${kept} of ${n} ${n === 1 ? 'record' : 'records'}` }
+    }
+    const issue = issueFor(p)
+    if (issue) return { ...base, issue }
+    const form = answerFor(p.item.id)
+    const removed = [...form.review.values()].filter((v) => v === 'removed').length
+    const changed = form.edited.size
+    const bits = [prefilledForms.has(p.item.id) ? 'Checked' : 'Answered']
+    if (changed) bits.push(`you changed ${changed}`)
+    if (removed) bits.push(`you removed ${removed}`)
+    return { ...base, detail: bits.join(', ') }
+  }
+
+  // A step shows as done once the patient is past it and nothing in it needs them.
+  const currentId = current.kind === 'review' ? 'review' : current.p?.item.id
+  const reached = ordered.findIndex((p) => p.item.id === currentId)
+  const progressItems = [
+    ...ordered.map((p, n) => ({ id: p.item.id, title: p.item.title, done: (currentId === 'review' || n < reached) && !issueFor(p) })),
+    { id: 'review', title: 'Send' },
+  ]
+
+  const onLeave = (itemId) => (fullUrl, leave) => {
+    const next = new Set(leftOut[itemId] ?? [])
+    if (leave) next.add(fullUrl)
+    else next.delete(fullUrl)
+    setLeftOut({ ...leftOut, [itemId]: next })
+    // Ticked or unticked by hand: no longer M5's doing.
+    const auto = new Set(autoLeft[itemId] ?? [])
+    auto.delete(fullUrl)
+    setAutoLeft({ ...autoLeft, [itemId]: auto })
+  }
+
+  const whose = (
+    <>
       {patients.length > 1 && (
-        <label className="file-label">
-          Whose information
+        <label className="ck-field">
+          <span>Whose records</span>
           <select value={patientId} onChange={(e) => setPatientId(e.target.value)}>
             {patients.map((p) => (
               <option key={p.id} value={p.id}>
@@ -373,61 +372,134 @@ export default function CheckinWallet() {
           </select>
         </label>
       )}
-
       {entries.length === 0 && (
-        <div className="import-section">
-          <p>
-            M5 has no FHIR records saved for {patient?.name}. M5 keeps records as FHIR from this version on, so import them
-            again (from a health system, a FHIR file or open-synthetic-patients) to share them here.
-          </p>
-          <p>Testing? Load a synthetic test patient with US Core records and an insurance card.</p>
-          <button type="button" onClick={loadTestPatient} disabled={loading}>
+        <div className="ck-empty">
+          <p>M5 has no health records saved for {patient?.name} yet. Add them in M5 first, then come back.</p>
+          <p>Just testing? Use a made-up patient instead.</p>
+          <button type="button" className="ck-secondary" onClick={loadTestPatient} disabled={loading}>
             {loading ? 'Loading…' : `Load the synthetic test patient (${CHECKIN_TEST_PATIENT.name})`}
           </button>
         </div>
       )}
+    </>
+  )
 
-      {!prepared ? (
-        <p className="import-message">Looking through the records…</p>
-      ) : (
-        displayOrder(prepared, prefilledForms).map((p) => (
-          <ItemCard
-            key={p.item.id}
-            p={p}
-            shared={!!choices[p.item.id]}
-            onShare={(v) => setChoices({ ...choices, [p.item.id]: v })}
-            form={answerFor(p.item.id)}
-            onForm={(next) => setForm(p.item.id, next)}
-            skipped={skipped[p.item.id] ?? 0}
-            notes={notes}
-            feeds={feeds[p.item.id] ? feedsNote(feeds[p.item.id]) : null}
-            left={leftOut[p.item.id]}
-            onLeave={(fullUrl, leave) => {
-              const next = new Set(leftOut[p.item.id] ?? [])
-              if (leave) next.add(fullUrl)
-              else next.delete(fullUrl)
-              setLeftOut({ ...leftOut, [p.item.id]: next })
-              // Ticked or unticked by hand: no longer M5's doing.
-              const auto = new Set(autoLeft[p.item.id] ?? [])
-              auto.delete(fullUrl)
-              setAutoLeft({ ...autoLeft, [p.item.id]: auto })
-            }}
-          />
-        ))
-      )}
+  let body
+  if (!prepared) {
+    body = <p className="ck-lead">Looking through your records…</p>
+  } else if (current.kind === 'start') {
+    body = (
+      <StartScreen
+        origin={origin}
+        purpose={request.purpose}
+        ordered={ordered}
+        prefilled={prefilledForms}
+        feeds={feeds}
+        onStart={() => go(1)}
+        onShareNothing={shareNothing}
+        onNotNow={() => session.reply({ declined: true })}
+      >
+        {whose}
+      </StartScreen>
+    )
+  } else if (current.kind === 'review') {
+    body = (
+      <>
+        <Progress items={progressItems} current="review" onJump={jump} />
+        <ReviewScreen origin={origin} rows={ordered.map(summary)} problem={problem} onEdit={jump} onSend={send} onShareNothing={shareNothing} />
+        <div className="ck-nav">
+          <button type="button" className="ck-back" onClick={() => go(at - 1)}>
+            Back
+          </button>
+        </div>
+      </>
+    )
+  } else {
+    const { p } = current
+    const id = p.item.id
+    const shared = !!choices[id]
+    const form = answerFor(id)
+    let heading = p.item.title
+    let lead = null
+    let content = null
+    let primary = { label: 'Next', run: () => go(at + 1) }
+    if (current.kind === 'section') {
+      const units = unitsIn(form, current.section.linkId)
+      const pending = units.filter((u) => form.review.get(u) === 'pending')
+      const from = describeSources([...new Set(units.flatMap((u) => form.sources.get(u) ?? []))])
+      heading = current.section.text ?? p.item.title
+      lead = units.length
+        ? `We filled this in from your ${from || 'records'}. Is it right? Fix anything that's wrong.`
+        : current.section.type === 'group'
+          ? 'Please fill this in.'
+          : null
+      if (pending.length) {
+        primary = {
+          label: 'Looks right, next',
+          run: () => {
+            setForm(id, confirmAll(form, pending))
+            go(at + 1)
+          },
+        }
+      }
+      content = (
+        <CheckinForm
+          questionnaire={p.questionnaire}
+          form={form}
+          onForm={(next) => setForm(id, next)}
+          idPrefix={`q-${id}`}
+          describeSources={describeSources}
+          section={current.section.linkId}
+        />
+      )
+    } else if (p.kind === 'form') {
+      lead = shared ? 'Answer the questions below.' : null
+      content = shared && (
+        <CheckinForm questionnaire={p.questionnaire} form={form} onForm={(next) => setForm(id, next)} idPrefix={`q-${id}`} describeSources={describeSources} />
+      )
+    } else if (p.kind === 'selection') {
+      content = <RecordsStep p={p} shared={shared} left={leftOut[id]} notes={notes} feeds={feeds[id] ? feedsNote(feeds[id]) : null} onLeave={onLeave(id)} />
+    } else {
+      lead = `M5 can't answer this one: ${p.reason}. It will tell the website.`
+    }
+    if (steps[at + 1]?.kind === 'review') primary = { ...primary, label: primary.label === 'Next' ? 'Next: last look' : 'Looks right, last look' }
+    const shareable = p.kind === 'form' || (p.kind === 'selection' && p.records.length > 0)
+    const firstOfItem = current.kind !== 'section' || current.n === 1
+    body = (
+      <>
+        <Progress items={progressItems} current={id} onJump={jump} />
+        <section className="ck-screen">
+          {current.kind === 'section' && (
+            <p className="ck-part">
+              {p.item.title}: part {current.n} of {current.of}
+            </p>
+          )}
+          <h2 className="ck-title">{heading}</h2>
+          {p.item.required && firstOfItem && <p className="ck-hint">The website says it needs this.</p>}
+          {shareable && firstOfItem && <ShareSwitch title={p.item.title} shared={shared} onChange={(v) => setChoices({ ...choices, [id]: v })} />}
+          {lead && <p className="ck-lead">{lead}</p>}
+          {current.kind === 'section' && current.n === 1 && (skipped[id] ?? 0) > 0 && (
+            <p className="ck-hint">
+              {skipped[id]} {skipped[id] === 1 ? 'answer' : 'answers'} from your records didn&apos;t fit this form, so {skipped[id] === 1 ? 'it was' : 'they were'} left blank.
+            </p>
+          )}
+          {content}
+        </section>
+        <div className="ck-nav">
+          <button type="button" className="ck-back" onClick={() => go(at - 1)}>
+            Back
+          </button>
+          <button type="button" className="ck-primary" onClick={primary.run}>
+            {primary.label}
+          </button>
+        </div>
+      </>
+    )
+  }
 
-      {problem && <p className="import-error">{problem}</p>}
-      <div className="button-row">
-        <button type="button" onClick={send} disabled={!prepared}>
-          Share what&apos;s ticked
-        </button>
-        <button type="button" onClick={shareNothing} disabled={!prepared}>
-          Share nothing
-        </button>
-        <button type="button" onClick={() => session.reply({ declined: true })}>
-          Cancel
-        </button>
-      </div>
+  return (
+    <div className="checkin-wallet ck">
+      {body}
     </div>
   )
 }
