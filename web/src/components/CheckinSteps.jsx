@@ -12,17 +12,16 @@ function hostOf(origin) {
   }
 }
 
-// "Step 2 of 4" and a bar, plus the step names to jump between.
-export function Progress({ items, current, onJump }) {
+// "Step 5 of 20" (every screen counts) and a bar, plus the step names to jump between.
+export function Progress({ items, current, index, total, onJump }) {
   const at = items.findIndex((i) => i.id === current)
-  const total = items.length
   return (
     <nav className="ck-progress" aria-label="Check-in steps">
       <p className="ck-progress-count">
-        Step {at + 1} of {total}
+        Step {index} of {total}
       </p>
-      <div className="ck-bar" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={at + 1} aria-label="Progress">
-        <span style={{ width: `${((at + 1) / total) * 100}%` }} />
+      <div className="ck-bar" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={index} aria-label="Progress">
+        <span style={{ width: `${(index / total) * 100}%` }} />
       </div>
       <ol className="ck-steps">
         {items.map((i, n) => (
@@ -43,16 +42,16 @@ export function Progress({ items, current, onJump }) {
 }
 
 // What M5 will do with each item, in a line.
-function plan(p, { prefilled, feeds }) {
+function plan(p, { prefilled, attached }) {
   if (p.kind === 'unsupported') return "M5 can't answer this one. It will tell the website."
   if (p.kind === 'form') return prefilled ? 'M5 fills in most of it from your records. You check each part.' : 'You answer these questions yourself.'
   const n = p.records.length
   if (n === 0) return 'Nothing in your records matches. M5 will tell the website.'
-  const base = `You pick which of your ${n} ${n === 1 ? 'record' : 'records'} to share.`
-  return feeds ? `${base} These also fill in your form.` : base
+  const count = `${n} ${n === 1 ? 'record' : 'records'}`
+  return attached ? `Your ${count}, shown with the matching part of your form. You can untick any.` : `You pick which of your ${count} to share.`
 }
 
-export function StartScreen({ origin, purpose, ordered, prefilled, feeds, onStart, onShareNothing, onNotNow, children }) {
+export function StartScreen({ origin, purpose, ordered, prefilled, attached = new Set(), onStart, onShareNothing, onNotNow, children }) {
   return (
     <section className="ck-screen ck-start">
       <h2 className="ck-title">A website wants you to check in</h2>
@@ -70,7 +69,7 @@ export function StartScreen({ origin, purpose, ordered, prefilled, feeds, onStar
         {ordered.map((p) => (
           <li key={p.item.id}>
             <strong>{p.item.title}</strong>
-            <span>{plan(p, { prefilled: prefilled.has(p.item.id), feeds: !!feeds[p.item.id] })}</span>
+            <span>{plan(p, { prefilled: prefilled.has(p.item.id), attached: attached.has(p.item.id) })}</span>
           </li>
         ))}
       </ol>
@@ -103,13 +102,13 @@ export function ShareSwitch({ title, shared, disabled, onChange }) {
   )
 }
 
-export function RecordsStep({ p, shared, left = new Set(), notes, feeds, onLeave }) {
+export function RecordsStep({ p, shared, left = new Set(), notes, feeds, onLeave, compact = false }) {
   const records = p.records
   if (records.length === 0) return <p className="ck-lead">Nothing in your records matches this. M5 will tell the website none is available.</p>
   return (
     <>
-      <p className="ck-lead">{records.length === 1 ? 'This record matches. Untick it to keep it private.' : 'Tick the records you want to share.'}</p>
-      {feeds && <p className="ck-hint">{feeds}</p>}
+      {!compact && <p className="ck-lead">{records.length === 1 ? 'This record matches. Untick it to keep it private.' : 'Tick the records you want to share.'}</p>}
+      {!compact && feeds && <p className="ck-hint">{feeds}</p>}
       <ul className="ck-records">
         {records.map((e) => (
           <li key={e.fullUrl}>
@@ -122,6 +121,32 @@ export function RecordsStep({ p, shared, left = new Set(), notes, feeds, onLeave
         ))}
       </ul>
     </>
+  )
+}
+
+// Records shared from a part of a form: on the same screen, so there's one pass.
+export function AttachedRecords({ p, shared, onShare, left = new Set(), notes, onLeave }) {
+  const n = p.records.length
+  const kept = p.records.filter((e) => !left.has(e.fullUrl)).length
+  return (
+    <section className="ck-attached" aria-label={`${p.item.title} records`}>
+      <div className="ck-attached-head">
+        <h3>
+          Your records: {p.item.title}
+          <span className="ck-attached-count">
+            {shared ? `${kept} of ${n} shared` : 'not shared'}
+          </span>
+        </h3>
+        <ShareSwitch title={p.item.title} shared={shared} onChange={onShare} />
+      </div>
+      {shared && (
+        <details className="ck-attached-list">
+          <summary>{n === 1 ? 'See the record' : 'Choose which to share'}</summary>
+          <RecordsStep p={p} shared={shared} left={left} notes={notes} onLeave={onLeave} compact />
+        </details>
+      )}
+      {shared && p.records.some((e) => notes.has(e.fullUrl)) && <p className="ck-note">Some of these are marked because you changed them above.</p>}
+    </section>
   )
 }
 
@@ -141,9 +166,11 @@ export function ReviewScreen({ origin, rows, problem, onEdit, onSend, onShareNot
               <strong>{r.title}</strong>
               <span>{r.issue ?? r.detail}</span>
             </span>
-            <button type="button" className="ck-link" onClick={() => onEdit(r.id)} aria-label={`${r.issue ? 'Fix' : 'Change'} ${r.title}`}>
-              {r.issue ? 'Fix' : 'Change'}
-            </button>
+            {r.editable !== false && (
+              <button type="button" className="ck-link" onClick={() => onEdit(r.id)} aria-label={`${r.issue ? 'Fix' : 'Change'} ${r.title}`}>
+                {r.issue ? 'Fix' : 'Change'}
+              </button>
+            )}
           </li>
         ))}
       </ul>
