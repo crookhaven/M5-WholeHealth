@@ -63,6 +63,8 @@ describe('CheckinWallet', () => {
     expect(await screen.findByText('A website wants you to check in')).toBeInTheDocument()
     expect(screen.getByText('clinic.example')).toBeInTheDocument()
     expect(screen.getByText(/Pre-visit check-in/)).toBeInTheDocument()
+    expect(screen.getByText('This is a demo.')).toBeInTheDocument()
+    expect(screen.queryByText(/wants you to check in/).textContent).not.toMatch(/clinic|provider|doctor/i)
     expect(screen.getByText('It asks for 2 things')).toBeInTheDocument()
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Start' }))

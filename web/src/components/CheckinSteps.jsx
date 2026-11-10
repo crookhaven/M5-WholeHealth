@@ -59,6 +59,11 @@ export function StartScreen({ origin, purpose, ordered, prefilled, feeds, onStar
       <p className="ck-origin">{hostOf(origin)}</p>
       {purpose && <p className="ck-purpose">It says: &ldquo;{purpose}&rdquo;</p>}
       <p className="ck-caution">M5 can&apos;t tell who runs this website. Only go on if you were expecting it.</p>
+      <p className="ck-demo">
+        <strong>This is a demo.</strong> M5 shows only the website&apos;s address. A real health app can also show the
+        clinic&apos;s name, but only when the clinic&apos;s website proves who it is with a security certificate the app
+        trusts.
+      </p>
       {children}
       <h3 className="ck-subtitle">It asks for {ordered.length === 1 ? '1 thing' : `${ordered.length} things`}</h3>
       <ol className="ck-plan">
