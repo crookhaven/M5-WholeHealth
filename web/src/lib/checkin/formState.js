@@ -31,6 +31,14 @@ export function asForm(x) {
   return x
 }
 
+const HIDDEN = 'http://hl7.org/fhir/StructureDefinition/questionnaire-hidden'
+export const isHidden = (item) => (item.extension ?? []).some((e) => e.url === HIDDEN && e.valueBoolean === true)
+
+// A form may carry a hidden group with this linkId (M5's intake does): the
+// app lists there every entry it filled in from a record that the patient
+// removed, so the care team learns it no longer applies.
+export const REMOVED_GROUP = 'removed-from-records'
+
 export const instancePrefix = (prefix, linkId, id) => `${prefix}${linkId}#${id}/`
 const parentPrefix = (prefix) => prefix.replace(/[^/]+#\d+\/$/, '')
 
@@ -162,12 +170,49 @@ const isRemoved = (form, prefix) => {
 
 // --- reading it ------------------------------------------------------------
 
-// Hidden, removed and unanswered questions are left out.
+// Entries filled in from a record that the patient removed, from the form's
+// top-level lists.
+export function removedEntries(questionnaire, form) {
+  const out = []
+  for (const g of questionnaire.item ?? []) {
+    if (g.type !== 'group' || !g.repeats || g.linkId === REMOVED_GROUP) continue
+    for (const id of form.groups.get(g.linkId) ?? []) {
+      const p = instancePrefix('', g.linkId, id)
+      if (form.review.get(p) !== 'removed') continue
+      const first = (g.item ?? []).map((c) => form.answers.get(p + c.linkId)?.[0]).find(Boolean)
+      out.push({ section: g.text ?? g.linkId, answer: first, sources: form.sources.get(p) ?? [] })
+    }
+  }
+  return out
+}
+
+function removedGroupItems(group, questionnaire, form) {
+  const textOf = (linkId) => group.item?.find((c) => c.linkId === linkId)?.text
+  const child = (linkId, answer) => (answer ? [{ linkId, ...(textOf(linkId) ? { text: textOf(linkId) } : {}), answer: [answer] }] : [])
+  const asAnswer = (a) => {
+    if (!a) return null
+    if (a.valueCoding || a.valueString !== undefined) return a
+    const v = Object.values(a)[0]
+    return v === undefined || v === null ? null : { valueString: String(v) }
+  }
+  return removedEntries(questionnaire, form).map((r) => ({
+    linkId: group.linkId,
+    ...(group.text ? { text: group.text } : {}),
+    item: [
+      ...child('removed-section', { valueString: r.section }),
+      ...child('removed-item', asAnswer(r.answer)),
+      ...child('removed-record', r.sources.length ? { valueString: r.sources.join(', ') } : null),
+    ],
+  }))
+}
+
+// Hidden-by-rule, removed and unanswered questions are left out.
 export function responseItems(questionnaire, form) {
   const build = (items = [], prefix) =>
     items
       .filter((i) => i.type !== 'display' && isEnabledAt(i, form, prefix))
       .flatMap((i) => {
+        if (i.linkId === REMOVED_GROUP && !prefix) return removedGroupItems(i, questionnaire, form)
         const head = { linkId: i.linkId, ...(i.text ? { text: i.text } : {}) }
         if (i.type === 'group' && i.repeats) {
           return (form.groups.get(prefix + i.linkId) ?? [])

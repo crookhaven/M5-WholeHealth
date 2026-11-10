@@ -330,6 +330,17 @@ body {
   background: var(--mg-change-wash);
   color: var(--mg-change);
 }
+.mg-badge-removed {
+  background: #f1f3f5;
+  color: var(--mg-ink);
+  border: 1px dashed var(--mg-muted);
+}
+.mg-allergies li.is-removed {
+  color: var(--mg-muted);
+}
+.mg-changes li.is-removed .mg-change-kind {
+  color: var(--mg-ink);
+}
 .mg-badge-reported {
   background: var(--mg-page);
   color: var(--mg-muted);

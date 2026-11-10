@@ -117,7 +117,7 @@
     }
   ],
   "url": "https://crookhaven.github.io/M5-WholeHealth/questionnaires/patient-intake.json",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "M5PatientIntake",
   "title": "Patient Intake Questionnaire",
   "status": "active",
@@ -2175,6 +2175,35 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "linkId": "removed-from-records",
+      "type": "group",
+      "repeats": true,
+      "text": "Removed by the patient",
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-hidden",
+          "valueBoolean": true
+        }
+      ],
+      "item": [
+        {
+          "linkId": "removed-section",
+          "type": "string",
+          "text": "Section of this form"
+        },
+        {
+          "linkId": "removed-item",
+          "type": "open-choice",
+          "text": "What the patient removed"
+        },
+        {
+          "linkId": "removed-record",
+          "type": "string",
+          "text": "The record it was filled in from"
         }
       ]
     }

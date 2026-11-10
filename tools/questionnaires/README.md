@@ -44,3 +44,9 @@ so a check-in request can send it by reference.
   insurance company are free text (was a reference to an Organization, which
   needs a server to search).
 - Race allows more than one answer, as US Core does.
+- A hidden last section, "Removed by the patient" (`removed-from-records`),
+  added in 0.2.0. The patient's app fills it in, not the patient: for each
+  entry it filled in from a record (an allergy, a medication…) that the
+  patient removed while reviewing, it gives the form section, the entry, and
+  the record (`AllergyIntolerance/123`). A care team then sees "the patient
+  says this no longer applies" instead of finding it silently missing.

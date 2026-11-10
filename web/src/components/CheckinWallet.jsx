@@ -5,7 +5,7 @@ import { useWorkspace } from '../state/WorkspaceContext'
 import { walletSession } from '../lib/checkin/session'
 import { buildResponse, declineAll, patientEntry, prepareItems, walletEntries } from '../lib/checkin/respond'
 import { missingRequired } from '../lib/checkin/forms'
-import { asForm, confirmAll, formFromPrefill, isEnabledAt, pendingReview, responseItems, wantsPrefill } from '../lib/checkin/formState'
+import { asForm, confirmAll, formFromPrefill, isEnabledAt, isHidden, pendingReview, responseItems, wantsPrefill } from '../lib/checkin/formState'
 import CheckinForm from './CheckinForm'
 import { Progress, RecordsStep, ReviewScreen, ShareSwitch, StartScreen } from './CheckinSteps'
 import { displayOrder } from '../lib/checkin/order'
@@ -81,9 +81,6 @@ export default function CheckinWallet() {
   const [answers, setAnswers] = useState({})
   // Records unticked within an item: { [itemId]: Set(fullUrl) }.
   const [leftOut, setLeftOut] = useState({})
-  // Records M5 unticked because the patient removed them in a form, so
-  // undoing the removal can tick them again: { [itemId]: Set(fullUrl) }.
-  const [autoLeft, setAutoLeft] = useState({})
   // Prefilled answers left blank because the record's code wasn't a choice.
   const [skipped, setSkipped] = useState({})
   const [problem, setProblem] = useState(null)
@@ -146,7 +143,6 @@ export default function CheckinWallet() {
       setAnswers(prefill)
       setSkipped(blank)
       setLeftOut({})
-      setAutoLeft({})
       setStep(0)
     })
     return () => {
@@ -182,39 +178,11 @@ export default function CheckinWallet() {
     return asForm(answers[itemId])
   }
 
-  // A form changed. If the patient removed an entry M5 filled in from a
-  // record they're also being asked to share, untick that record too (and
-  // tick it again if they undo); they can still change it by hand.
+  // A form changed. A record behind an entry the patient removed stays
+  // shared, and the form says it was removed, so the care team sees that the
+  // patient says it no longer applies; the patient can still untick it.
   function setForm(itemId, next) {
-    const before = answerFor(itemId)
     setAnswers({ ...answers, [itemId]: next })
-    const left = { ...leftOut }
-    const auto = { ...autoLeft }
-    let changed = false
-    for (const [unit, status] of next.review) {
-      const was = before.review.get(unit)
-      if ((status === 'removed') === (was === 'removed')) continue
-      for (const [target, urls] of Object.entries(recordsFor(prepared, next.sources.get(unit) ?? []))) {
-        const l = new Set(left[target] ?? [])
-        const a = new Set(auto[target] ?? [])
-        for (const url of urls) {
-          if (status === 'removed' && !l.has(url)) {
-            l.add(url)
-            a.add(url)
-          } else if (status !== 'removed' && a.has(url)) {
-            l.delete(url)
-            a.delete(url)
-          }
-        }
-        left[target] = l
-        auto[target] = a
-        changed = true
-      }
-    }
-    if (changed) {
-      setLeftOut(left)
-      setAutoLeft(auto)
-    }
   }
 
   // Records items that filled in a form: { itemId: Map(formTitle -> Set(section)) }.
@@ -246,7 +214,7 @@ export default function CheckinWallet() {
           notes.set(
             url,
             removed
-              ? `You removed this in your "${p.item.title}" form, so it's unticked.`
+              ? `You removed this in your "${p.item.title}" form. It's still shared so your care team can see you said it no longer applies. Untick it to keep it private.`
               : `You changed this in your "${p.item.title}" form. If you share this record, it goes as it is.`,
           )
         }
@@ -297,7 +265,7 @@ export default function CheckinWallet() {
   for (const p of ordered) {
     const form = answerFor(p.item.id)
     if (p.kind === 'form' && choices[p.item.id] && prefilledForms.has(p.item.id)) {
-      const parts = p.questionnaire.item.filter((i) => i.type !== 'display' && isEnabledAt(i, form, ''))
+      const parts = p.questionnaire.item.filter((i) => i.type !== 'display' && !isHidden(i) && isEnabledAt(i, form, ''))
       parts.forEach((section, n) => steps.push({ kind: 'section', p, section, n: n + 1, of: parts.length }))
     } else {
       steps.push({ kind: 'item', p })
@@ -352,10 +320,6 @@ export default function CheckinWallet() {
     if (leave) next.add(fullUrl)
     else next.delete(fullUrl)
     setLeftOut({ ...leftOut, [itemId]: next })
-    // Ticked or unticked by hand: no longer M5's doing.
-    const auto = new Set(autoLeft[itemId] ?? [])
-    auto.delete(fullUrl)
-    setAutoLeft({ ...autoLeft, [itemId]: auto })
   }
 
   const whose = (
