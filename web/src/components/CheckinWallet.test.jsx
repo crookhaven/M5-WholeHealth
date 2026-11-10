@@ -157,18 +157,18 @@ describe('CheckinWallet', () => {
 
     await toLastLook(user)
     expect(screen.getByText('Checked, you changed 1, you removed 1')).toBeInTheDocument()
-    expect(screen.getByText('3 of 4 records')).toBeInTheDocument()
+    expect(screen.getByText('4 of 4 records')).toBeInTheDocument()
 
-    // The allergy removed in the form is unticked in the records, with a note
+    // The allergy removed in the form stays shared, with a note saying why
     await user.click(screen.getByRole('button', { name: 'Change Allergies' }))
     expect(screen.getByText('These also filled in the Allergies part of your "Patient intake" form.')).toBeInTheDocument()
-    expect(screen.getByText('You removed this in your "Patient intake" form, so it\'s unticked.')).toBeInTheDocument()
+    expect(screen.getByText(/You removed this in your "Patient intake" form\. It's still shared so your care team can see you said it no longer applies/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Next: last look' }))
     await user.click(screen.getByRole('button', { name: 'Send to clinic.example' }))
 
     const { response } = reply.mock.calls[0][0]
     expect(response.requestStatus).toEqual([
-      { item: 'allergies', status: 'partial', message: 'The patient chose to share 3 of 4 records.' },
+      { item: 'allergies', status: 'fulfilled' },
       { item: 'intake', status: 'fulfilled' },
     ])
     const qr = response.artifacts.find((a) => a.fulfills.includes('intake')).value
@@ -176,5 +176,7 @@ describe('CheckinWallet', () => {
     const allergies = qr.item.filter((i) => i.linkId === 'allergies')
     expect(allergies.map((g) => g.item[0].answer[0].valueCoding.display)).toEqual(['lisinopril', 'Seafood', 'Latex'])
     expect(allergies[0].item.find((i) => i.linkId === 'allergy-reaction').answer).toEqual([{ valueString: 'Swollen lips' }])
+    const removed = qr.item.filter((i) => i.linkId === 'removed-from-records')
+    expect(removed.map((g) => g.item.find((i) => i.linkId === 'removed-item').answer[0].valueCoding.display)).toEqual(['penicillin G'])
   }, 30000)
 })

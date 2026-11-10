@@ -13,7 +13,7 @@ import json
 import sys
 
 CANONICAL = "https://crookhaven.github.io/M5-WholeHealth/questionnaires/patient-intake.json"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 PRACTICE = "[Practice Name]"
 
 SDC = "http://hl7.org/fhir/uv/sdc/StructureDefinition/"
@@ -305,6 +305,24 @@ def transform(item, seen):
     return item
 
 
+# Filled in by the patient's app, not shown to the patient: an entry the app
+# filled in from a record (an allergy, a medication) that the patient removed
+# while reviewing the form, so the care team knows they say it no longer
+# applies rather than finding it silently missing.
+REMOVED_FROM_RECORDS = {
+    "linkId": "removed-from-records",
+    "type": "group",
+    "repeats": True,
+    "text": "Removed by the patient",
+    "extension": [x("http://hl7.org/fhir/StructureDefinition/questionnaire-hidden", valueBoolean=True)],
+    "item": [
+        {"linkId": "removed-section", "type": "string", "text": "Section of this form"},
+        {"linkId": "removed-item", "type": "open-choice", "text": "What the patient removed"},
+        {"linkId": "removed-record", "type": "string", "text": "The record it was filled in from"},
+    ],
+}
+
+
 def main(src, out):
     bundle = json.load(open(src))
     original = next(e["resource"] for e in bundle["entry"] if e["resource"]["resourceType"] == "Questionnaire")
@@ -345,7 +363,7 @@ def main(src, out):
         ),
         "copyright": "Portions derived from the Medplum patient intake demo, licensed under the Apache License 2.0.",
         "derivedFrom": [original["url"]],
-        "item": items,
+        "item": items + [REMOVED_FROM_RECORDS],
     }
     json.dump(q, open(out, "w"), indent=2, ensure_ascii=False)
     open(out, "a").write("\n")

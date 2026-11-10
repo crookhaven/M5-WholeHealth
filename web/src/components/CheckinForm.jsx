@@ -1,4 +1,5 @@
 import {
+  isHidden,
   addEntry,
   confirmAll,
   instancePrefix,
@@ -286,7 +287,7 @@ function Item({ item, prefix, ctx, top }) {
 
 function Items({ items = [], prefix, ctx, top = false }) {
   return items
-    .filter((i) => isEnabledAt(i, ctx.form, prefix))
+    .filter((i) => !isHidden(i) && isEnabledAt(i, ctx.form, prefix))
     .map((i) => <Item key={prefix + i.linkId} item={i} prefix={prefix} ctx={ctx} top={top} />)
 }
 

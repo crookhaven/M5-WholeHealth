@@ -177,9 +177,25 @@ function matches(answer, cc) {
   return !!said && (codes.some((x) => norm(x.display) === said) || norm(cc?.text) === said)
 }
 
-function compareList(list, intakeItems, shared) {
+// Entries the patient's app says the patient removed (M5's intake form has a
+// hidden "Removed by the patient" section): { section, label, refs }.
+function removedByPatient(intakeItems) {
+  return groups(intakeItems, 'removed-from-records').map((items) => ({
+    section: firstAnswer(items, 'removed-section'),
+    label: firstAnswer(items, 'removed-item'),
+    refs: firstAnswer(items, 'removed-record')
+      .split(',')
+      .map((r) => r.trim())
+      .filter(Boolean),
+  }))
+}
+
+function compareList(list, intakeItems, shared, removed) {
   const entries = groups(intakeItems, list.group).map((items) => ({ items, answer: findItem(items, list.key)?.answer?.[0] }))
   const records = shared.filter((r) => list.types.includes(r.resourceType))
+  const sectionText = norm(findItem(intakeItems, list.group)?.text)
+  const mine = removed.filter((r) => r.refs.some((ref) => list.types.includes(ref.split('/')[0])) || (!r.refs.length && norm(r.section) === sectionText))
+  const removedRecords = new Set(records.filter((rec) => mine.some((m) => m.refs.includes(`${rec.resourceType}/${rec.id}`))))
   // Each form entry claims one record, so a vaccine given twice matches both doses.
   const claimed = new Set()
   const rows = entries.map(({ items, answer }) => {
@@ -195,8 +211,12 @@ function compareList(list, intakeItems, shared) {
       : []
     return { label, details, record, status: !records.length ? 'reported' : record ? (changes.length ? 'changed' : 'confirmed') : 'added', changes }
   })
-  const notInForm = entries.length || records.length ? records.filter((r) => list.current(r) && !claimed.has(r)) : []
-  return { rows, notInForm, recordsShared: records.length > 0 }
+  const notInForm = entries.length || records.length ? records.filter((r) => list.current(r) && !claimed.has(r) && !removedRecords.has(r)) : []
+  const removedRows = mine.map((m) => {
+    const record = records.find((rec) => m.refs.includes(`${rec.resourceType}/${rec.id}`))
+    return { label: m.label || textOf(record && list.code(record)) || 'Unnamed', details: {}, record, status: 'removed', changes: [] }
+  })
+  return { rows: [...rows, ...removedRows], notInForm, recordsShared: records.length > 0 }
 }
 
 const DEMOGRAPHICS = [
@@ -240,7 +260,8 @@ export function summarize(request, response, { phq2Questionnaire, today = new Da
     language: fromForm('preferred-language'),
   }
 
-  const lists = Object.fromEntries(LISTS.map((l) => [l.group, { section: l.section, ...compareList(l, intake, all) }]))
+  const removed = removedByPatient(intake)
+  const lists = Object.fromEntries(LISTS.map((l) => [l.group, { section: l.section, ...compareList(l, intake, all, removed) }]))
 
   const changes = []
   if (patientRecord && intake.length) {
@@ -253,6 +274,10 @@ export function summarize(request, response, { phq2Questionnaire, today = new Da
   for (const l of LISTS) {
     const { rows, notInForm } = lists[l.group]
     for (const r of rows) {
+      if (r.status === 'removed') {
+        const since = r.record?.onsetDateTime ?? r.record?.recordedDate ?? r.record?.authoredOn ?? r.record?.occurrenceDateTime
+        changes.push({ section: l.section, kind: 'removed', text: `${r.label}: the patient says this no longer applies${r.record ? ` (on their record${since ? ` since ${String(since).slice(0, 4)}` : ''})` : ''}` })
+      }
       if (r.status === 'added') changes.push({ section: l.section, kind: 'added', text: `${r.label} (not in the records shared)` })
       for (const c of r.changes) changes.push({ section: l.section, kind: 'changed', text: `${r.label}, ${c.label}: ${c.was} → ${c.now}` })
     }

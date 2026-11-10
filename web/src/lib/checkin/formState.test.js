@@ -85,8 +85,15 @@ describe('check-in form state', () => {
     expect(form.review.get(`medications#${id}/`)).toBe('removed')
     expect(pendingReview(form)).not.toContain(`medications#${id}/`)
     expect(find(responseItems(intake, form), 'medications')).toHaveLength(count - 1)
+    // …and listed in the form's hidden "Removed by the patient" section, with its record
+    const removed = find(responseItems(intake, form), 'removed-from-records')
+    expect(removed).toHaveLength(1)
+    expect(removed[0].item.find((i) => i.linkId === 'removed-section').answer).toEqual([{ valueString: 'Current medications' }])
+    expect(removed[0].item.find((i) => i.linkId === 'removed-item').answer[0].valueCoding.display).toBe(form.answers.get(`medications#${id}/medication-code`)[0].valueCoding.display)
+    expect(removed[0].item.find((i) => i.linkId === 'removed-record').answer[0].valueString).toMatch(/^MedicationRequest\//)
     form = setReview(form, `medications#${id}/`, 'pending')
     expect(find(responseItems(intake, form), 'medications')).toHaveLength(count)
+    expect(find(responseItems(intake, form), 'removed-from-records')).toEqual([])
   })
 
   it('adds entries the patient types in, and drops them outright when removed', () => {

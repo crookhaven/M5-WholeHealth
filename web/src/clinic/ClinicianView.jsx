@@ -9,6 +9,7 @@ const STATUS_LABEL = {
   changed: 'Changed by patient',
   added: 'Added by patient',
   reported: 'Patient reported',
+  removed: 'Removed by patient',
 }
 
 function Badge({ status }) {
@@ -24,10 +25,11 @@ function fmtDate(d) {
 
 function ListCard({ title, list, detail, empty }) {
   const rows = list?.rows ?? []
+  const current = rows.filter((r) => r.status !== 'removed').length
   return (
     <section className="mg-card mg-list">
       <h2>
-        {title} <span className="mg-count">{rows.length}</span>
+        {title} <span className="mg-count">{current}</span>
       </h2>
       {rows.length === 0 ? (
         <p className="mg-muted">{empty}</p>
@@ -36,7 +38,7 @@ function ListCard({ title, list, detail, empty }) {
           {rows.map((r, n) => (
             <li key={n}>
               <span className="mg-row-main">
-                <strong>{r.label || 'Unnamed'}</strong>
+                <strong>{r.status === 'removed' ? <s>{r.label || 'Unnamed'}</s> : r.label || 'Unnamed'}</strong>
                 {detail && <span className="mg-muted">{detail(r)}</span>}
               </span>
               <Badge status={r.status} />
@@ -122,6 +124,7 @@ const STATUS_WORDS = { fulfilled: 'Shared', partial: 'Some shared', declined: 'N
 
 export default function ClinicianView({ summary: s, response, receivedAt }) {
   const allergies = s.lists.allergies.rows
+  const activeAllergies = allergies.filter((a) => a.status !== 'removed')
   const insurance = s.coverage[0]
   const changes = s.changes
   return (
@@ -142,13 +145,13 @@ export default function ClinicianView({ summary: s, response, receivedAt }) {
         </div>
       </section>
 
-      <section className={`mg-allergies ${allergies.length ? '' : 'is-none'}`} aria-label="Allergies">
+      <section className={`mg-allergies ${activeAllergies.length ? '' : 'is-none'}`} aria-label="Allergies">
         <h2>Allergies</h2>
         {allergies.length ? (
           <ul>
             {allergies.map((a, n) => (
-              <li key={n}>
-                <strong>{a.label}</strong>
+              <li key={n} className={a.status === 'removed' ? 'is-removed' : undefined}>
+                <strong>{a.status === 'removed' ? <s>{a.label}</s> : a.label}</strong>
                 {a.details['allergy-reaction'] && <span> ({a.details['allergy-reaction']})</span>}
                 <Badge status={a.status} />
               </li>
@@ -168,7 +171,7 @@ export default function ClinicianView({ summary: s, response, receivedAt }) {
               <ul>
                 {changes.map((c, n) => (
                   <li key={n} className={`is-${c.kind}`}>
-                    <span className="mg-change-kind">{c.kind === 'added' ? 'Added' : c.kind === 'changed' ? 'Changed' : 'Not in form'}</span>
+                    <span className="mg-change-kind">{{ added: 'Added', changed: 'Changed', removed: 'Removed', missing: 'Not in form' }[c.kind]}</span>
                     <span>
                       <span className="mg-muted">{c.section}: </span>
                       {c.text}

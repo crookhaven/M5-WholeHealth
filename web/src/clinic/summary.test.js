@@ -51,11 +51,9 @@ async function checkIn() {
       ['phq2-2', [{ valueCoding: scale[1].valueCoding }]],
     ]),
   }
-  // M5 unticks the penicillin record when it's removed from the form.
-  const allergyItem = prepared.find((p) => p.item.id === 'allergies')
-  const penicillinRecord = allergyItem.records.find((e) => /penicillin/i.test(JSON.stringify(e.resource.code)))
+  // The penicillin record stays shared; the form says the patient removed it.
   const choices = Object.fromEntries(prepared.map((p) => [p.item.id, true]))
-  const response = buildResponse({ request, prepared, choices, answers, patientRef: 'Patient/x', leftOut: { allergies: new Set([penicillinRecord.fullUrl]) } })
+  const response = buildResponse({ request, prepared, choices, answers, patientRef: 'Patient/x' })
   return { request, response }
 }
 
@@ -65,7 +63,7 @@ describe('clinician summary', () => {
     const s = summarize(request, response, { phq2Questionnaire: phq2, today: new Date('2026-11-10') })
     expect(s.patient).toMatchObject({ name: 'Maximus Decimus Meridius', dob: '1978-03-15', age: 48, sex: 'Male' })
     expect(s.items.find((i) => i.id === 'family-history').status).toBe('unavailable')
-    expect(s.items.find((i) => i.id === 'allergies').status).toBe('partial')
+    expect(s.items.find((i) => i.id === 'allergies').status).toBe('fulfilled')
     // Counts are the records asked for, not the prescribers and payers that come along
     expect(s.items.find((i) => i.id === 'medications').count).toBe(22)
     expect(s.items.find((i) => i.id === 'coverage').count).toBe(3)
@@ -80,14 +78,18 @@ describe('clinician summary', () => {
       ['Seafood', 'confirmed'],
       ['Latex', 'confirmed'],
       ['Bee stings', 'added'],
+      ['penicillin G', 'removed'],
     ])
     expect(s.changes).toEqual(
       expect.arrayContaining([
         { section: 'Demographics', kind: 'changed', text: 'City: Springfield → Shelbyville' },
         { section: 'Allergies', kind: 'changed', text: 'lisinopril, reaction: Angioedema → Swollen lips' },
         { section: 'Allergies', kind: 'added', text: 'Bee stings (not in the records shared)' },
+        { section: 'Allergies', kind: 'removed', text: 'penicillin G: the patient says this no longer applies (on their record since 1996)' },
       ]),
     )
+    // Known as removed, so not also reported as missing from the form
+    expect(s.changes.filter((c) => c.kind === 'missing' && /penicillin/i.test(c.text))).toEqual([])
     // Stopped medications and repeat doses of a vaccine aren't flagged as missing from the form
     expect(s.changes.filter((c) => c.section === 'Medications' && c.kind === 'missing')).toEqual([])
     expect(s.changes.filter((c) => c.section === 'Vaccinations')).toEqual([])
