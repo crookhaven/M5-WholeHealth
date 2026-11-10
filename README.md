@@ -16,6 +16,16 @@ M5 Whole Health is being built and tested in step with a series of HL7/CMS inter
 
 **November 2026 (planned) -- SMART Health Check-in connectathon, Nov 3.** Building a standalone test wallet (see the app's Connectathon tab, or [`web/public/test-wallet/`](web/public/test-wallet/)) for the "Kill the Clipboard" SMART Health Check-in use case: a Wallet tab that answers check-in requests, and a Verifier tab that sends them (including to itself). Scenario coverage so far: demographics/problems/medications; any-us-core (decline-all, no-selector, unknown-selector); large-response with a narrowed family history (~3.2 MB synthetic); form-by-reference and versioned-canonical forms; physician forms with conditional and repeating questions; opt-in shared artifacts; and best-effort prefilled forms. Not yet supported: SMART Health Cards (needs card signing), cross-device/in-person handoff, and write-back (an EHR-side role, not a wallet's).
 
+### Demo clinic: check in with M5, then see the clinician view
+
+[`clinic/`](https://crookhaven.github.io/M5-WholeHealth/clinic/) is a made-up clinic, Maple Grove Family Medicine, for showing the whole flow. It runs the real SMART Health Check-in exchange with the project's own library:
+
+1. The clinic asks for M5's intake form (filled in from the patient's records), the records behind each part of it (demographics, emergency contact, allergies, medications, medical history, family history, vaccinations, insurance, smoking/pregnancy/social needs) and the PHQ-2.
+2. The patient picks M5, checks each part step by step, and sends it.
+3. The clinic switches to a **clinician view**: the patient banner, an allergy band, a scored PHQ-2 (positive at 3 or more), what the patient changed compared with the records they shared (added, changed, or on record but not in the form), the lists, insurance, emergency contact, social history, consents, and every intake answer. The response stays in the page; nothing is posted anywhere.
+
+Source: [`web/clinic/index.html`](web/clinic/index.html) and [`web/src/clinic/`](web/src/clinic/).
+
 ## Running the app
 
 A working implementation of the MVP below lives in [`web/`](web/) -- a
