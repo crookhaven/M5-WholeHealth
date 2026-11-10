@@ -1586,6 +1586,45 @@ table {
 .ck-record.is-off span {
   color: var(--ck-muted);
 }
+/* Records shared from a part of the form */
+.ck-attached {
+  border: 2px solid var(--ck-line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--ck-card);
+}
+.ck-attached-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.ck-attached h3 {
+  font-size: 1.05rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ck-attached-count {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--ck-muted);
+}
+.ck-attached-list summary {
+  cursor: pointer;
+  color: var(--ck-teal-ink);
+  font-weight: 700;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+}
+.ck-attached-list .ck-records {
+  margin-top: 0.4rem;
+}
 .ck-note {
   font-size: 0.95rem;
   color: var(--ck-warn);

@@ -134,11 +134,13 @@ describe('CheckinWallet', () => {
 
     // The start screen lists the intake first, then the records it was filled from
     await screen.findByText('M5 fills in most of it from your records. You check each part.')
+    expect(screen.getByText('Your 4 records, shown with the matching part of your form. You can untick any.')).toBeInTheDocument()
     expect([...document.querySelectorAll('.ck-plan strong')].map((e) => e.textContent)).toEqual(['Patient intake', 'Allergies'])
     await user.click(screen.getByRole('button', { name: 'Start' }))
 
     // One part at a time, filled in from the records
     expect(screen.getByText('Patient intake: part 1 of 17')).toBeInTheDocument()
+    expect(screen.getByText('Step 1 of 18')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Demographics' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('Maximus')).toBeInTheDocument()
     expect(screen.getByText('We filled this in from your details. Is it right? Fix anything that\'s wrong.')).toBeInTheDocument()
@@ -159,11 +161,14 @@ describe('CheckinWallet', () => {
     expect(screen.getByText('Checked, you changed 1, you removed 1')).toBeInTheDocument()
     expect(screen.getByText('4 of 4 records')).toBeInTheDocument()
 
-    // The allergy removed in the form stays shared, with a note saying why
+    // Allergies has no step of its own: its records are shared from the intake's Allergies part
     await user.click(screen.getByRole('button', { name: 'Change Allergies' }))
-    expect(screen.getByText('These also filled in the Allergies part of your "Patient intake" form.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Allergies', level: 2 })).toBeInTheDocument()
+    const box = screen.getByRole('region', { name: 'Allergies records' })
+    expect(box).toHaveTextContent('4 of 4 shared')
+    await user.click(screen.getByText('Choose which to share'))
     expect(screen.getByText(/You removed this in your "Patient intake" form\. It's still shared so your care team can see you said it no longer applies/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Next: last look' }))
+    await user.click(screen.getByRole('button', { name: 'Send' }))
     await user.click(screen.getByRole('button', { name: 'Send to clinic.example' }))
 
     const { response } = reply.mock.calls[0][0]

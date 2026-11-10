@@ -7,8 +7,8 @@ import { buildResponse, declineAll, patientEntry, prepareItems, walletEntries } 
 import { missingRequired } from '../lib/checkin/forms'
 import { asForm, confirmAll, formFromPrefill, isEnabledAt, isHidden, pendingReview, responseItems, wantsPrefill } from '../lib/checkin/formState'
 import CheckinForm from './CheckinForm'
-import { Progress, RecordsStep, ReviewScreen, ShareSwitch, StartScreen } from './CheckinSteps'
-import { displayOrder } from '../lib/checkin/order'
+import { AttachedRecords, Progress, RecordsStep, ReviewScreen, ShareSwitch, StartScreen } from './CheckinSteps'
+import { displayOrder, selectionType } from '../lib/checkin/order'
 import { CHECKIN_TEST_PATIENT, bundleToRecords, fetchFromGitHub } from '../lib/openSyntheticPatients'
 
 // M5 as a SMART Health Check-in web wallet: a check-in page opens M5 with
@@ -56,6 +56,22 @@ function feedsNote(uses) {
       return `These also filled in the ${names} ${list.length > 1 ? 'parts' : 'part'} of your "${title}" form.`
     })
     .join(' ')
+}
+
+// Which part of an intake form a kind of record belongs with, when the form
+// wasn't filled in from those records (Medplum's section linkIds).
+const TYPE_SECTION = {
+  Patient: 'patient-demographics',
+  RelatedPerson: 'emergency-contact',
+  AllergyIntolerance: 'allergies',
+  MedicationRequest: 'medications',
+  MedicationStatement: 'medications',
+  Medication: 'medications',
+  Condition: 'medical-history',
+  FamilyMemberHistory: 'family-member-history',
+  Immunization: 'vaccination-history',
+  Coverage: 'coverage-information',
+  Observation: 'social-determinants-of-health',
 }
 
 const typeId = (r) => (r?.resourceType && r.id ? `${r.resourceType}/${r.id}` : null)
@@ -259,17 +275,40 @@ export default function CheckinWallet() {
 
   const ordered = prepared ? displayOrder(prepared, prefilledForms) : []
 
-  // The steps: a long form filled in from records goes one part (top-level
-  // section) at a time; everything else is one step.
+  // One pass, one screen per step. A form filled in from records goes one part
+  // (top-level section) at a time, and the records behind each part are shared
+  // from that same screen rather than in a second pass. Items with nothing to
+  // do (no matching records, or ones M5 can't answer) get no step; the start
+  // screen and the last look still list them.
+  const host = ordered.find((p) => p.kind === 'form' && choices[p.item.id] && prefilledForms.has(p.item.id))
+  const hostForm = host ? answerFor(host.item.id) : null
+  const parts = host ? host.questionnaire.item.filter((i) => i.type !== 'display' && !isHidden(i) && isEnabledAt(i, hostForm, '')) : []
+  const partIds = new Set(parts.map((i) => i.linkId))
+  const attached = {}
+  const attachedIds = new Set()
+  if (host) {
+    for (const p of ordered) {
+      if (p.kind !== 'selection' || p.records.length === 0) continue
+      let section = null
+      for (const [unit, refs] of hostForm.sources) {
+        if (recordsFor(prepared, refs)[p.item.id]) {
+          section = unit.startsWith('top:') ? unit.slice(4) : unit.split('#')[0]
+          break
+        }
+      }
+      if (!partIds.has(section)) section = TYPE_SECTION[selectionType(p)]
+      if (partIds.has(section)) {
+        ;(attached[section] ??= []).push(p)
+        attachedIds.add(p.item.id)
+      }
+    }
+  }
   const steps = [{ kind: 'start' }]
   for (const p of ordered) {
-    const form = answerFor(p.item.id)
-    if (p.kind === 'form' && choices[p.item.id] && prefilledForms.has(p.item.id)) {
-      const parts = p.questionnaire.item.filter((i) => i.type !== 'display' && !isHidden(i) && isEnabledAt(i, form, ''))
-      parts.forEach((section, n) => steps.push({ kind: 'section', p, section, n: n + 1, of: parts.length }))
-    } else {
-      steps.push({ kind: 'item', p })
-    }
+    if (p === host) parts.forEach((section, n) => steps.push({ kind: 'section', p, section, n: n + 1, of: parts.length, attached: attached[section.linkId] ?? [] }))
+    else if (attachedIds.has(p.item.id)) continue
+    else if (p.kind === 'unsupported' || (p.kind === 'selection' && p.records.length === 0)) continue
+    else steps.push({ kind: 'item', p })
   }
   steps.push({ kind: 'review' })
   const at = Math.min(step, steps.length - 1)
@@ -280,19 +319,23 @@ export default function CheckinWallet() {
     setStep(Math.max(0, Math.min(n, steps.length - 1)))
     if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0 })
   }
-  const jump = (id) => go(id === 'review' ? steps.length - 1 : steps.findIndex((s) => s.p?.item.id === id))
+  const stepOf = (id) => (id === 'review' ? steps.length - 1 : steps.findIndex((s) => s.p?.item.id === id || s.attached?.some((a) => a.item.id === id)))
+  const jump = (id) => {
+    const n = stepOf(id)
+    if (n >= 0) go(n)
+  }
 
   // The review units of one form section: its own and its entries'.
   const unitsIn = (form, linkId) => [...form.review.keys()].filter((u) => u === `top:${linkId}` || u.startsWith(`${linkId}#`))
 
   function summary(p) {
     const shared = !!choices[p.item.id]
-    const base = { id: p.item.id, title: p.item.title, shared: shared && p.kind !== 'unsupported' }
+    const base = { id: p.item.id, title: p.item.title, shared: shared && p.kind !== 'unsupported', editable: stepOf(p.item.id) > 0 }
     if (p.kind === 'unsupported') return { ...base, detail: "M5 can't send this. The website will be told." }
+    if (p.kind === 'selection' && p.records.length === 0) return { ...base, shared: false, detail: 'Nothing in your records matched. The website will be told.' }
     if (!shared) return { ...base, detail: "You chose not to share this." }
     if (p.kind === 'selection') {
       const n = p.records.length
-      if (n === 0) return { ...base, shared: false, detail: 'Nothing matched. The website will be told.' }
       const kept = p.records.filter((e) => !(leftOut[p.item.id] ?? new Set()).has(e.fullUrl)).length
       return { ...base, detail: `${kept} of ${n} ${n === 1 ? 'record' : 'records'}` }
     }
@@ -307,13 +350,19 @@ export default function CheckinWallet() {
     return { ...base, detail: bits.join(', ') }
   }
 
-  // A step shows as done once the patient is past it and nothing in it needs them.
-  const currentId = current.kind === 'review' ? 'review' : current.p?.item.id
-  const reached = ordered.findIndex((p) => p.item.id === currentId)
-  const progressItems = [
-    ...ordered.map((p, n) => ({ id: p.item.id, title: p.item.title, done: (currentId === 'review' || n < reached) && !issueFor(p) })),
-    { id: 'review', title: 'Send' },
-  ]
+  // The step names to jump between: one per item that has steps, then Send.
+  // One is done once the patient is past all its screens and nothing in it
+  // needs them.
+  const progressItems = []
+  steps.forEach((st) => {
+    if (st.kind === 'start') return
+    const id = st.kind === 'review' ? 'review' : st.p.item.id
+    const last = steps.findLastIndex((x) => (x.kind === 'review' ? 'review' : x.p?.item.id) === id)
+    if (!progressItems.some((i) => i.id === id)) {
+      progressItems.push({ id, title: id === 'review' ? 'Send' : st.p.item.title, done: id !== 'review' && last < at && !issueFor(st.p) })
+    }
+  })
+  const progress = { index: at, total: steps.length - 1 }
 
   const onLeave = (itemId) => (fullUrl, leave) => {
     const next = new Set(leftOut[itemId] ?? [])
@@ -359,6 +408,7 @@ export default function CheckinWallet() {
         ordered={ordered}
         prefilled={prefilledForms}
         feeds={feeds}
+        attached={attachedIds}
         onStart={() => go(1)}
         onShareNothing={shareNothing}
         onNotNow={() => session.reply({ declined: true })}
@@ -369,7 +419,7 @@ export default function CheckinWallet() {
   } else if (current.kind === 'review') {
     body = (
       <>
-        <Progress items={progressItems} current="review" onJump={jump} />
+        <Progress items={progressItems} current="review" {...progress} onJump={jump} />
         <ReviewScreen origin={origin} rows={ordered.map(summary)} problem={problem} onEdit={jump} onSend={send} onShareNothing={shareNothing} />
         <div className="ck-nav">
           <button type="button" className="ck-back" onClick={() => go(at - 1)}>
@@ -431,7 +481,7 @@ export default function CheckinWallet() {
     const firstOfItem = current.kind !== 'section' || current.n === 1
     body = (
       <>
-        <Progress items={progressItems} current={id} onJump={jump} />
+        <Progress items={progressItems} current={id} {...progress} onJump={jump} />
         <section className="ck-screen">
           {current.kind === 'section' && (
             <p className="ck-part">
@@ -448,6 +498,18 @@ export default function CheckinWallet() {
             </p>
           )}
           {content}
+          {current.kind === 'section' &&
+            current.attached.map((rp) => (
+              <AttachedRecords
+                key={rp.item.id}
+                p={rp}
+                shared={!!choices[rp.item.id]}
+                onShare={(v) => setChoices({ ...choices, [rp.item.id]: v })}
+                left={leftOut[rp.item.id]}
+                notes={notes}
+                onLeave={onLeave(rp.item.id)}
+              />
+            ))}
         </section>
         <div className="ck-nav">
           <button type="button" className="ck-back" onClick={() => go(at - 1)}>
