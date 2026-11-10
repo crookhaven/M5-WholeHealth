@@ -1,4 +1,5 @@
 const WALLET_URL = `${import.meta.env.BASE_URL}test-wallet/index.html`
+const CLINIC_URL = `${import.meta.env.BASE_URL}clinic/`
 
 const SCENARIOS = [
   ['Demographics, problems, medications', 'Supported'],
@@ -16,6 +17,23 @@ const SCENARIOS = [
 export default function ConnectathonPanel() {
   return (
     <div className="import-panel">
+      <section className="import-section">
+        <h2>Try a check-in at a demo clinic</h2>
+        <p>
+          Maple Grove Family Medicine is a made-up clinic that checks you in with M5. It asks for an intake form, the
+          health records behind it (allergies, medications, problems, vaccinations, insurance and more) and two short
+          mood questions. M5 fills in what it can from your records, you check each part and send it, and the clinic
+          then shows what a clinician would see, including anything you changed or removed.
+        </p>
+        <p>
+          <a className="button-link" href={CLINIC_URL} target="_blank" rel="noopener">
+            Open the demo clinic
+          </a>
+        </p>
+        <p className="section-help">
+          No records in M5 yet? The check-in offers a made-up test patient. Nothing you share leaves the clinic page.
+        </p>
+      </section>
       <section className="import-section">
         <h2>SMART Health Check-in test wallet</h2>
         <p>
